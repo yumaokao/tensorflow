@@ -50,7 +50,7 @@ bool GraphTransformationsPass(int increment, Model* model,
   LOG(INFO) << "YMK Before GraphTransformationsPass ";
   for (int i = 0; i < model->operators.size(); i++) {
       auto& op = *model->operators[i];
-      LOG(INFO) << "YMK index: " << i << " op " << HelpfulOperatorTypeName(op);
+      LOG(INFO) << "    index: " << i << " op " << HelpfulOperatorTypeName(op);
   }
 
   int op_index = increment == 1 ? 0 : model->operators.size() - 1;
@@ -61,9 +61,9 @@ bool GraphTransformationsPass(int increment, Model* model,
       CHECK(!changed_now);
       CHECK(transformation->Messages().empty());
       changed_now = transformation->Run(model, op_index);
-      LOG(INFO) << "YMK in transformation " << transformation->Name() 
+      /* LOG(INFO) << "YMK in transformation " << transformation->Name() 
                 << " op_index " << op_index
-                << " changed_now " << changed_now;
+                << " changed_now " << changed_now; */
       if (changed_now) {
         DumpGraphvizVideoFrame(*model);
         CHECK(!model->operators.empty());
@@ -100,7 +100,7 @@ bool GraphTransformationsPass(int increment, Model* model,
   LOG(INFO) << "YMK After GraphTransformationsPass ";
   for (int i = 0; i < model->operators.size(); i++) {
       auto& op = *model->operators[i];
-      LOG(INFO) << "YMK index: " << i << " op " << HelpfulOperatorTypeName(op);
+      LOG(INFO) << "    index: " << i << " op " << HelpfulOperatorTypeName(op);
   }
   return changed;
 }

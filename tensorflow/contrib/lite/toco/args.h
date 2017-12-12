@@ -220,6 +220,7 @@ struct ParsedTocoFlags {
   Arg<bool> drop_fake_quant = Arg<bool>(false);
   Arg<bool> reorder_across_fake_quant = Arg<bool>(false);
   Arg<bool> allow_custom_ops = Arg<bool>(false);
+  Arg<bool> partial_quant = Arg<bool>(false);
   // Deprecated flags
   Arg<string> input_type;
   Arg<string> input_types;

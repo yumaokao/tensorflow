@@ -66,6 +66,7 @@ void ToolMain(const ParsedTocoFlags& parsed_toco_flags,
 
   TocoFlags toco_flags;
   ReadTocoFlagsFromCommandLineFlags(parsed_toco_flags, &toco_flags);
+  std::cout << "YMK in ToolMain partial_quant " << toco_flags.partial_quant() << std::endl;
 
   CheckFilePermissions(parsed_toco_flags, parsed_model_flags, toco_flags);
 

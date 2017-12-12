@@ -328,16 +328,16 @@ bool Quantize::Run(Model* model, std::size_t op_index) {
   //
 
   auto& op = *model->operators[op_index];
-  LOG(INFO) << "YMK in Quantize::Run " << op_index << " type " << HelpfulOperatorTypeName(op);
+  // LOG(INFO) << "YMK in Quantize::Run " << op_index << " type " << HelpfulOperatorTypeName(op);
   if (op.type == OperatorType::kDequantize ||
       op.type == OperatorType::kFakeQuant) {
     return false;
   }
 
-  if (op.type == OperatorType::kLocalResponseNormalization) {
+  /* if (op.type == OperatorType::kLocalResponseNormalization) {
     // LOG(ERROR) << "YMK in kLocalResponseNormalization";
     return false;
-  }
+  } */
 
   // Our assumption here is that the input arrays are already quantized -
   // that is typically the case in models operating on an input bitmap
@@ -396,7 +396,7 @@ bool Quantize::Run(Model* model, std::size_t op_index) {
     if (ChooseQuantizationForOperatorInput(this, model, op, input_index,
                                            &quantized_data_type,
                                            &quantization_params)) {
-      LOG(INFO) << "YMK in Quantize::Run Q4Input " << op_index << " type " << HelpfulOperatorTypeName(op);
+      // LOG(INFO) << "YMK in Quantize::Run Q4Input " << op_index << " type " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& input = op.inputs[input_index];
       if (IsConstantParameterArray(*model, input)) {
@@ -434,7 +434,7 @@ bool Quantize::Run(Model* model, std::size_t op_index) {
     if (ChooseQuantizationForOperatorOutput(this, model, op, output_index,
                                             &quantized_data_type,
                                             &quantization_params)) {
-      LOG(INFO) << "YMK in Quantize::Run Q4Output " << op_index << " type " << HelpfulOperatorTypeName(op);
+      // LOG(INFO) << "YMK in Quantize::Run Q4Output " << op_index << " type " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& output = op.outputs[output_index];
       QuantizeArray(this, model, output, quantized_data_type,
