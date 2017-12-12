@@ -47,11 +47,13 @@ bool GraphTransformationsPass(int increment, Model* model,
   bool changed = false;
   CHECK(!model->operators.empty());
 
+#if 0
   LOG(INFO) << "YMK Before GraphTransformationsPass ";
   for (unsigned int i = 0; i < model->operators.size(); i++) {
       auto& op = *model->operators[i];
       LOG(INFO) << "    index: " << i << " op " << HelpfulOperatorTypeName(op);
   }
+#endif
 
   int op_index = increment == 1 ? 0 : model->operators.size() - 1;
   while (true) {
@@ -96,12 +98,14 @@ bool GraphTransformationsPass(int increment, Model* model,
       op_index += increment;
     }
   }
+#if 0
   LOG(INFO) << "YMK in GraphTransformationsPass, increment " << increment << " changed " << changed;
   LOG(INFO) << "YMK After GraphTransformationsPass ";
   for (unsigned int i = 0; i < model->operators.size(); i++) {
       auto& op = *model->operators[i];
       LOG(INFO) << "    index: " << i << " op " << HelpfulOperatorTypeName(op);
   }
+#endif
   return changed;
 }
 

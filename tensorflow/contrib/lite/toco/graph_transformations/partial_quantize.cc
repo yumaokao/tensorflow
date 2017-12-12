@@ -305,12 +305,12 @@ bool ChooseQuantizationForOperatorOutput(
       output, minmax.min, minmax.max, quantization_params->zero_point,
       quantization_params->scale);
 
+  // LOG(INFO) << "YMK in ChooseQuantizationForOperatorOutput: " << HelpfulOperatorTypeName(op);
   return true;
 }
 
 bool QuantizeInputsAndOutputs(
     GraphTransformation* transformation, Model* model, Operator& op) {
-  // TODO(YMK) These functions should be exported for reuse
   for (const auto& input : op.inputs) {
     const auto& array = model->GetArray(input);
     if (array.data_type == ArrayDataType::kFloat) {
@@ -327,6 +327,7 @@ bool QuantizeInputsAndOutputs(
             "which means that we should yield and let other ops "
             "get quantized first",
             toco::LogName(op), input);
+        LOG(INFO) << "YMK in QuantizeInputsAndOutputs notQ: " << HelpfulOperatorTypeName(op);
         return false;
       }
     }
@@ -343,7 +344,7 @@ bool QuantizeInputsAndOutputs(
                                            input_index,
                                            &quantized_data_type,
                                            &quantization_params)) {
-      // LOG(INFO) << "YMK in Quantize::Run Q4Input " << op_index << " type " << HelpfulOperatorTypeName(op);
+      LOG(INFO) << "YMK in Quantize::Run Q4Input: " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& input = op.inputs[input_index];
       if (IsConstantParameterArray(*model, input)) {
@@ -382,7 +383,7 @@ bool QuantizeInputsAndOutputs(
                                             output_index,
                                             &quantized_data_type,
                                             &quantization_params)) {
-      // LOG(INFO) << "YMK in Quantize::Run Q4Output " << op_index << " type " << HelpfulOperatorTypeName(op);
+      LOG(INFO) << "YMK in Quantize::Run Q4Output: " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& output = op.outputs[output_index];
       QuantizeArray(transformation, model, output, quantized_data_type,
@@ -419,6 +420,75 @@ bool QuantizeInputsAndOutputs(
   }
   return changed; 
 }
+
+bool PartialQuantizeOutputs(
+    GraphTransformation* transformation, Model* model, Operator& op) {
+  // Partially quantize outputs
+  bool changed = false;
+
+  // Quantize outputs, add Dequantize ops as needed on the outputs side
+  for (std::size_t output_index = 0; output_index < op.outputs.size();
+       output_index++) {
+    ArrayDataType quantized_data_type;
+    QuantizationParams quantization_params;
+    // LOG(INFO) << "YMK in PartialQuantizeOutputs: " << HelpfulOperatorTypeName(op) << " output_index " << output_index;
+    if (ChooseQuantizationForOperatorOutput(transformation, model, op,
+                                            output_index,
+                                            &quantized_data_type,
+                                            &quantization_params)) {
+      changed = true;
+      const auto& output = op.outputs[output_index];
+      QuantizeArray(transformation, model, output, quantized_data_type,
+                    quantization_params);
+      const auto& dequantized_output =
+          AvailableArrayName(*model, output + "_dequantized");
+      const auto& output_array = model->GetArray(output);
+      const auto& output_minmax = output_array.GetMinMax();
+      auto& dequantized_output_array =
+          model->GetOrCreateArray(dequantized_output);
+      dequantized_output_array.data_type = ArrayDataType::kFloat;
+      auto& dequantized_output_minmax =
+          dequantized_output_array.GetOrCreateMinMax();
+      dequantized_output_minmax.min = output_minmax.min;
+      dequantized_output_minmax.max = output_minmax.max;
+      for (const auto& other_op : model->operators) {
+        for (auto& other_op_input : other_op->inputs) {
+          if (other_op_input == output) {
+            other_op_input = dequantized_output;
+          }
+        }
+      }
+
+#if 0
+      const auto& fakequantized_output =
+          AvailableArrayName(*model, output + "_fakequantized");
+      auto& fakequantized_output_array =
+          model->GetOrCreateArray(fakequantized_output);
+      fakequantized_output_array.data_type = ArrayDataType::kFloat;
+      auto& fakequantized_output_minmax =
+          fakequantized_output_array.GetOrCreateMinMax();
+      fakequantized_output_minmax.min = output_minmax.min;
+      fakequantized_output_minmax.max = output_minmax.max;
+
+      auto* fakequantize_op = new FakeQuantOperator;
+      fakequantize_op->inputs = {output};
+      fakequantize_op->outputs = {fakequantized_output};
+#endif
+
+      auto* dequantize_op = new DequantizeOperator;
+      dequantize_op->inputs = {output};
+      dequantize_op->outputs = {dequantized_output};
+      for (int i = 0; i < model->flags.output_arrays_size(); i++) {
+        if (model->flags.output_arrays(i) == output) {
+          model->flags.set_output_arrays(i, dequantized_output);
+        }
+      }
+      const auto op_it = FindOp(*model, &op);
+      model->operators.emplace(op_it + 1, dequantize_op);
+    }
+  }
+  return changed;
+}
 }  // namespace
 
 bool PartialQuantize::Run(Model* model, std::size_t op_index) {
@@ -446,11 +516,6 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  if (op.type == OperatorType::kLocalResponseNormalization) {
-    // LOG(ERROR) << "YMK in kLocalResponseNormalization";
-    return false;
-  }
-
   // Our assumption here is that the input arrays are already quantized -
   // that is typically the case in models operating on an input bitmap
   // image, and MakeInitialDequantizeOp should have already resolved
@@ -468,6 +533,8 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
       CHECK(input_array.quantization_params);
     }
   }
+
+#if 0
   if (!SupportsQuantization(op)) {
     LOG(FATAL) << "Unimplemented: this graph contains an operator of type "
                << HelpfulOperatorTypeName(op)
@@ -476,116 +543,16 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
                   "to write, mostly providing the actual quantized arithmetic "
                   "code for this op).";
   }
-
-  bool changed = false;
-  changed = QuantizeInputsAndOutputs(this, model, op);
-
-#if 0
-  for (const auto& input : op.inputs) {
-    const auto& array = model->GetArray(input);
-    if (array.data_type == ArrayDataType::kFloat) {
-      if (!array.minmax && !array.buffer) {
-        LOG(ERROR) << "Can't quantize input array " << input
-                   << " because it lacks min/max info";
-        return false;
-      }
-      const auto* other_op = GetOpWithOutput(*model, input);
-      if (other_op && other_op->type != OperatorType::kDequantize) {
-        AddMessageF(
-            "Not quantizing %s for now, because its input array %s is not "
-            "produced by a Dequantize op, "
-            "which means that we should yield and let other ops "
-            "get quantized first",
-            LogName(op), input);
-        return false;
-      }
-    }
-  }
-
-  bool changed = false;
-
-  // Quantize inputs, remove any Dequantize op on the inputs side
-  for (std::size_t input_index = 0; input_index < op.inputs.size();
-       input_index++) {
-    ArrayDataType quantized_data_type;
-    QuantizationParams quantization_params;
-    if (ChooseQuantizationForOperatorInput(this, model, op, input_index,
-                                           &quantized_data_type,
-                                           &quantization_params)) {
-      // LOG(INFO) << "YMK in Quantize::Run Q4Input " << op_index << " type " << HelpfulOperatorTypeName(op);
-      changed = true;
-      const auto& input = op.inputs[input_index];
-      if (IsConstantParameterArray(*model, input)) {
-        QuantizeArray(this, model, input, quantized_data_type,
-                      quantization_params);
-      } else {
-        auto dequantize_it = FindOpWithOutput(*model, input);
-        CHECK(dequantize_it != model->operators.end());
-        auto* dequantize_op = dequantize_it->get();
-        CHECK(dequantize_op->type == OperatorType::kDequantize);
-        op.inputs[input_index] = dequantize_op->inputs[0];
-        // Check if the output of that Dequantize op was not used by any
-        // other operator. We will then erase that Dequantize op.
-        if (!CountOpsWithInput(*model, dequantize_op->outputs[0])) {
-          // If any of the model's output_arrays was pointing to the
-          // Dequantize op's output, let it point to the Dequantize op's
-          // input instead.
-          for (int i = 0; i < model->flags.output_arrays_size(); i++) {
-            if (model->flags.output_arrays(i) == dequantize_op->outputs[0]) {
-              model->flags.set_output_arrays(i, dequantize_op->inputs[0]);
-            }
-          }
-          model->arrays.erase(dequantize_op->outputs[0]);
-          model->operators.erase(dequantize_it);
-        }
-      }
-    }
-  }
-
-  // Quantize outputs, add Dequantize ops as needed on the outputs side
-  for (std::size_t output_index = 0; output_index < op.outputs.size();
-       output_index++) {
-    ArrayDataType quantized_data_type;
-    QuantizationParams quantization_params;
-    if (ChooseQuantizationForOperatorOutput(this, model, op, output_index,
-                                            &quantized_data_type,
-                                            &quantization_params)) {
-      // LOG(INFO) << "YMK in Quantize::Run Q4Output " << op_index << " type " << HelpfulOperatorTypeName(op);
-      changed = true;
-      const auto& output = op.outputs[output_index];
-      QuantizeArray(this, model, output, quantized_data_type,
-                    quantization_params);
-      const auto& dequantized_output =
-          AvailableArrayName(*model, output + "_dequantized");
-      const auto& output_array = model->GetArray(output);
-      const auto& output_minmax = output_array.GetMinMax();
-      auto& dequantized_output_array =
-          model->GetOrCreateArray(dequantized_output);
-      dequantized_output_array.data_type = ArrayDataType::kFloat;
-      auto& dequantized_output_minmax =
-          dequantized_output_array.GetOrCreateMinMax();
-      dequantized_output_minmax.min = output_minmax.min;
-      dequantized_output_minmax.max = output_minmax.max;
-      for (const auto& other_op : model->operators) {
-        for (auto& other_op_input : other_op->inputs) {
-          if (other_op_input == output) {
-            other_op_input = dequantized_output;
-          }
-        }
-      }
-      auto* dequantize_op = new DequantizeOperator;
-      dequantize_op->inputs = {output};
-      dequantize_op->outputs = {dequantized_output};
-      for (int i = 0; i < model->flags.output_arrays_size(); i++) {
-        if (model->flags.output_arrays(i) == output) {
-          model->flags.set_output_arrays(i, dequantized_output);
-        }
-      }
-      const auto op_it = FindOp(*model, &op);
-      model->operators.emplace(op_it + 1, dequantize_op);
-    }
-  }
 #endif
+
+  bool changed = false;
+  if (SupportsQuantization(op)) {
+    changed = QuantizeInputsAndOutputs(this, model, op);
+  } else {
+    LOG(INFO) << "YMK in Quantize::Run !SupportsQuantization " << op_index << " type " << HelpfulOperatorTypeName(op);
+    changed = PartialQuantizeOutputs(this, model, op);
+    return false;
+  }
 
   return changed;
 }
