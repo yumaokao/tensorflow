@@ -188,6 +188,7 @@ cc_library(
         "graph_transformations/propagate_array_data_types.cc",
         "graph_transformations/propagate_fixed_sizes.cc",
         "graph_transformations/quantize.cc",
+        "graph_transformations/partial_quantize.cc",
         "graph_transformations/read_fake_quant_min_max.cc",
         "graph_transformations/remove_final_dequantize_op.cc",
         "graph_transformations/remove_tensorflow_assert.cc",

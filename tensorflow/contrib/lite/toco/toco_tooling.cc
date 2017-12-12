@@ -231,7 +231,7 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
     if (toco_flags.partial_quant()) {
       RunGraphTransformations(
         model, "partial quantization graph transformations",
-        {new Quantize, new RemoveTrivialQuantizedActivationFunc,
+        {new PartialQuantize, new RemoveTrivialQuantizedActivationFunc,
          new RemoveFinalDequantizeOp});
     } else { // not partial_quant
       RunGraphTransformations(
