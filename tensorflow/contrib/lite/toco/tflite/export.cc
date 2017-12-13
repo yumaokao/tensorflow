@@ -193,7 +193,6 @@ Offset<Vector<Offset<OperatorCode>>> ExportOperatorCodes(
     if (ops_by_type.count(op->type) != 0) {
       name = ops_by_type.at(op->type)->name();
       is_builtin = (builtin_ops.count(name) > 0);
-      std::cout << "YMK in ExportOperatorCodes name " << name << " is_builtin " << is_builtin << std::endl;
     }
 
     if (is_builtin) {
@@ -234,7 +233,6 @@ Offset<Vector<Offset<Operator>>> ExportOperators(
   // The operators are in execution order, so we just follow tf.mini order.
   std::vector<Offset<Operator>> op_vector;
   for (const auto& op : model.operators) {
-    std::cout << "YMK in ExportOperators " << HelpfulOperatorTypeName(*op) << std::endl;
     std::vector<int32_t> inputs;
     for (const string& input : op->inputs) {
       inputs.push_back(tensors_map.at(input));
@@ -246,27 +244,21 @@ Offset<Vector<Offset<Operator>>> ExportOperators(
     }
 
     int op_index = operators_map.at(GetOperatorKey(*op));
-    std::cout << "YMK in ExportOperators op_index " << op_index << std::endl;
 
     // This is a custom op unless we can find it in ops_by_type, and even then
     // it could be a custom op (such as kTensorFlowUnsupported).
 
     auto options = Options::Custom(0);
     if (ops_by_type.count(op->type) != 0)  {
-      std::cout << "YMK in ExportOperators before options " << HelpfulOperatorTypeName(*op) << std::endl;
-      std::cout << "YMK in ExportOperators before ops_by_type " << &ops_by_type.at(op->type) << std::endl;
       options = ops_by_type.at(op->type)->Serialize(*op, builder);
-      std::cout << "YMK in ExportOperators after options " << HelpfulOperatorTypeName(*op) << std::endl;
     }
     // The only supported CustomOptionFormat is FLEXBUFFERS now.
     op_vector.push_back(CreateOperator(
         *builder, op_index, builder->CreateVector(inputs),
         builder->CreateVector(outputs), options.type, options.builtin,
         options.custom, ::tflite::CustomOptionsFormat_FLEXBUFFERS));
-    std::cout << "YMK in ExportOperators end op_index " << op_index << std::endl;
   }
 
-  std::cout << "YMK in ExportOperators return" << std::endl;
   return builder->CreateVector(op_vector);
 }
 
@@ -315,11 +307,9 @@ void Export(const Model& model, bool allow_custom_ops,
                    "you will need custom implementations: "
                 << absl::StrJoin(error_summary, ", ") << ".";
   }
-  std::cout << "YMK in Export after ExportOperatorCodes " << std::endl;
 
   auto ops =
       ExportOperators(model, ops_by_type, operators_map, tensors_map, &builder);
-  std::cout << "YMK in Export after ExportOperators " << std::endl;
 
   // TODO(aselle): add support to toco for multiple subgraphs.
   auto subgraph = CreateSubGraph(builder, tensors, inputs, outputs, ops);

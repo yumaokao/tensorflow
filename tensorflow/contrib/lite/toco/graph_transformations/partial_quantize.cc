@@ -270,6 +270,14 @@ bool ChooseQuantizationForOperatorOutput(
   if (array.data_type != ArrayDataType::kFloat) {
     return false;
   }
+  if (CountOpsWithInput(*model, output) == 1) {
+    // Check there is only one FakeQuant attach this output
+    auto next_it = FindOpWithInput(*model, output);
+    auto* next_op = next_it->get();
+    if (next_op->type == OperatorType::kFakeQuant) {
+      return false;
+    }
+  }
   if (ChooseHardcodedQuantizationForOperatorOutput(op, quantized_data_type,
                                                    quantization_params)) {
     transformation->AddMessageF(
@@ -327,7 +335,7 @@ bool QuantizeInputsAndOutputs(
             "which means that we should yield and let other ops "
             "get quantized first",
             toco::LogName(op), input);
-        LOG(INFO) << "YMK in QuantizeInputsAndOutputs notQ: " << HelpfulOperatorTypeName(op);
+        // LOG(INFO) << "YMK in QuantizeInputsAndOutputs notQ: " << HelpfulOperatorTypeName(op);
         return false;
       }
     }
@@ -344,7 +352,7 @@ bool QuantizeInputsAndOutputs(
                                            input_index,
                                            &quantized_data_type,
                                            &quantization_params)) {
-      LOG(INFO) << "YMK in Quantize::Run Q4Input: " << HelpfulOperatorTypeName(op);
+      // LOG(INFO) << "YMK in Quantize::Run Q4Input: " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& input = op.inputs[input_index];
       if (IsConstantParameterArray(*model, input)) {
@@ -383,7 +391,7 @@ bool QuantizeInputsAndOutputs(
                                             output_index,
                                             &quantized_data_type,
                                             &quantization_params)) {
-      LOG(INFO) << "YMK in Quantize::Run Q4Output: " << HelpfulOperatorTypeName(op);
+      // LOG(INFO) << "YMK in Quantize::Run Q4Output: " << HelpfulOperatorTypeName(op);
       changed = true;
       const auto& output = op.outputs[output_index];
       QuantizeArray(transformation, model, output, quantized_data_type,
@@ -431,15 +439,15 @@ bool PartialQuantizeOutputs(
        output_index++) {
     ArrayDataType quantized_data_type;
     QuantizationParams quantization_params;
-    // LOG(INFO) << "YMK in PartialQuantizeOutputs: " << HelpfulOperatorTypeName(op) << " output_index " << output_index;
+    LOG(INFO) << "YMK in PartialQuantizeOutputs: " << HelpfulOperatorTypeName(op) << " output_index " << output_index;
     if (ChooseQuantizationForOperatorOutput(transformation, model, op,
                                             output_index,
                                             &quantized_data_type,
                                             &quantization_params)) {
       changed = true;
       const auto& output = op.outputs[output_index];
-      QuantizeArray(transformation, model, output, quantized_data_type,
-                    quantization_params);
+      /* QuantizeArray(transformation, model, output, quantized_data_type,
+                    quantization_params); */
       const auto& dequantized_output =
           AvailableArrayName(*model, output + "_dequantized");
       const auto& output_array = model->GetArray(output);
@@ -459,12 +467,11 @@ bool PartialQuantizeOutputs(
         }
       }
 
-#if 1
       const auto& fakequantized_output =
           AvailableArrayName(*model, output + "_fakequantized");
       auto& fakequantized_output_array =
           model->GetOrCreateArray(fakequantized_output);
-      fakequantized_output_array.data_type = ArrayDataType::kFloat;
+      fakequantized_output_array.data_type = quantized_data_type;
       auto& fakequantized_output_minmax =
           fakequantized_output_array.GetOrCreateMinMax();
       fakequantized_output_minmax.min = output_minmax.min;
@@ -477,7 +484,6 @@ bool PartialQuantizeOutputs(
       fakequantize_minmax.max = output_minmax.max;
       fakequantize_op->inputs = {output};
       fakequantize_op->outputs = {fakequantized_output};
-#endif
 
       auto* dequantize_op = new DequantizeOperator;
       dequantize_op->inputs = {fakequantized_output};
@@ -554,7 +560,6 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
   if (SupportsQuantization(op)) {
     changed = QuantizeInputsAndOutputs(this, model, op);
   } else {
-    LOG(INFO) << "YMK in Quantize::Run !SupportsQuantization " << op_index << " type " << HelpfulOperatorTypeName(op);
     changed = PartialQuantizeOutputs(this, model, op);
     return false;
   }
