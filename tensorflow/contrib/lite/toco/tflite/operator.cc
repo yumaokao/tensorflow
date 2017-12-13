@@ -179,8 +179,12 @@ class FakeQuant : public CustomOperator<FakeQuantOperator> {
   using CustomOperator::CustomOperator;
   void WriteOptions(const TocoOperator& op,
                     flexbuffers::Builder* fbb) const override {
+    std::cout << "YMK in FakeQuant WriteOptions " << std::endl;
+    std::cout << "YMK in FakeQuant WriteOptions min " << op.minmax->min << std::endl;
+    std::cout << "YMK in FakeQuant WriteOptions max " << op.minmax->max << std::endl;
     fbb->Float("min", op.minmax->min);
     fbb->Float("max", op.minmax->max);
+    std::cout << "YMK in FakeQuant WriteOptions End" << std::endl;
   }
   void ReadOptions(const flexbuffers::Map& m, TocoOperator* op) const override {
     auto* minmax = new MinMax;

@@ -459,7 +459,7 @@ bool PartialQuantizeOutputs(
         }
       }
 
-#if 0
+#if 1
       const auto& fakequantized_output =
           AvailableArrayName(*model, output + "_fakequantized");
       auto& fakequantized_output_array =
@@ -471,12 +471,16 @@ bool PartialQuantizeOutputs(
       fakequantized_output_minmax.max = output_minmax.max;
 
       auto* fakequantize_op = new FakeQuantOperator;
+      fakequantize_op->minmax.reset(new MinMax);
+      MinMax& fakequantize_minmax = *fakequantize_op->minmax;
+      fakequantize_minmax.min = output_minmax.min;
+      fakequantize_minmax.max = output_minmax.max;
       fakequantize_op->inputs = {output};
       fakequantize_op->outputs = {fakequantized_output};
 #endif
 
       auto* dequantize_op = new DequantizeOperator;
-      dequantize_op->inputs = {output};
+      dequantize_op->inputs = {fakequantized_output};
       dequantize_op->outputs = {dequantized_output};
       for (int i = 0; i < model->flags.output_arrays_size(); i++) {
         if (model->flags.output_arrays(i) == output) {
@@ -484,7 +488,8 @@ bool PartialQuantizeOutputs(
         }
       }
       const auto op_it = FindOp(*model, &op);
-      model->operators.emplace(op_it + 1, dequantize_op);
+      model->operators.emplace(op_it + 1, fakequantize_op);
+      model->operators.emplace(op_it + 2, dequantize_op);
     }
   }
   return changed;

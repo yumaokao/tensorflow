@@ -66,7 +66,7 @@ void ToolMain(const ParsedTocoFlags& parsed_toco_flags,
 
   TocoFlags toco_flags;
   ReadTocoFlagsFromCommandLineFlags(parsed_toco_flags, &toco_flags);
-  std::cout << "YMK in ToolMain partial_quant " << toco_flags.partial_quant() << std::endl;
+  // std::cout << "YMK in ToolMain partial_quant " << toco_flags.partial_quant() << std::endl;
 
   CheckFilePermissions(parsed_toco_flags, parsed_model_flags, toco_flags);
 
@@ -77,12 +77,15 @@ void ToolMain(const ParsedTocoFlags& parsed_toco_flags,
   std::unique_ptr<Model> model =
       Import(toco_flags, model_flags, input_file_contents);
   Transform(toco_flags, model.get());
+  std::cout << "YMK in ToolMain after Transform " << std::endl;
   string output_file_contents;
   Export(toco_flags, *model, toco_flags.allow_custom_ops(),
          &output_file_contents);
+  std::cout << "YMK in ToolMain after Export " << std::endl;
   CHECK_OK(port::file::SetContents(parsed_toco_flags.output_file.value(),
                                    output_file_contents,
                                    port::file::Defaults()));
+  std::cout << "YMK in ToolMain end ToolMain " << std::endl;
 }
 
 }  // namespace
