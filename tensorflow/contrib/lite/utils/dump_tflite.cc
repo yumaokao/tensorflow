@@ -109,7 +109,7 @@ void Dump(const char* filename) {
   for (int i = 0; i < opcodes->Length(); ++i) {
     const auto* opcode = opcodes->Get(i);
     auto op = opcode->builtin_code();
-    printf("  %d: buildin_code: %d\n", i, op);
+    printf("  %2d: buildin_code: %2d %s\n", i, op, EnumNameBuiltinOperator(op));
   }
 
   auto* buffers = model_->buffers();
@@ -118,9 +118,9 @@ void Dump(const char* filename) {
     const auto* buffer = buffers->Get(i);
     if (const auto* array = buffer->data()) {
       size_t size = array->size();
-      printf("  %d: size %zu\n", i, size);
+      printf("  %2d: size %zu\n", i, size);
     } else {
-      printf("  %d: size 0\n", i);
+      printf("  %2d: size 0\n", i);
     }
   }
 
@@ -130,7 +130,9 @@ void Dump(const char* filename) {
   for (int i = 0; i < operators->Length(); ++i) {
     const auto* op = operators->Get(i);
     int index = op->opcode_index();
-    printf("  %d: index %d\n", i, index);
+    const auto* opcode = opcodes->Get(index);
+    auto bop = opcode->builtin_code();
+    printf("  %2d: index %2d -> %2d %s\n", i, index, bop, EnumNameBuiltinOperator(bop));
   }
   auto tensors = subgraph->tensors();
   printf("number of tensors: %d\n", tensors->size());
