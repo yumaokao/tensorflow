@@ -178,9 +178,6 @@ bool ChooseQuantizationForOperatorInput(
       // been already quantized.
       const auto& input_activations = model->GetArray(op.inputs[0]);
       const auto& input_weights = model->GetArray(op.inputs[1]);
-      if (!input_activations.quantization_params) {
-        LOG(INFO) << "YMK in ChooseQuantizationForOperatorInput : " << HelpfulOperatorTypeName(op) << " no input_activations.quantization_params";;
-      }
       if (!input_activations.quantization_params ||
           !input_weights.quantization_params) {
         return false;
@@ -351,12 +348,10 @@ bool QuantizeInputsAndOutputs(
        input_index++) {
     ArrayDataType quantized_data_type;
     QuantizationParams quantization_params;
-    LOG(INFO) << "YMK in Quantize: " << HelpfulOperatorTypeName(op) << " input_index " << input_index;
     if (ChooseQuantizationForOperatorInput(transformation, model, op,
                                            input_index,
                                            &quantized_data_type,
                                            &quantization_params)) {
-      LOG(INFO) << "YMK in Quantize Q4Input: " << HelpfulOperatorTypeName(op) << " input_index " << input_index;
       changed = true;
       const auto& input = op.inputs[input_index];
       if (IsConstantParameterArray(*model, input)) {
@@ -409,6 +404,9 @@ bool QuantizeInputsAndOutputs(
       dequantized_output_array.data_type = ArrayDataType::kFloat;
       auto& dequantized_output_minmax =
           dequantized_output_array.GetOrCreateMinMax();
+      if (output_array.has_shape()) {
+          dequantized_output_array.copy_shape(output_array.shape());
+      }
       dequantized_output_minmax.min = output_minmax.min;
       dequantized_output_minmax.max = output_minmax.max;
       for (const auto& other_op : model->operators) {
@@ -456,9 +454,13 @@ bool PartialQuantizeOutputs(
           AvailableArrayName(*model, output + "_dequantized");
       const auto& output_array = model->GetArray(output);
       const auto& output_minmax = output_array.GetMinMax();
+
       auto& dequantized_output_array =
           model->GetOrCreateArray(dequantized_output);
       dequantized_output_array.data_type = ArrayDataType::kFloat;
+      if (output_array.has_shape()) {
+          dequantized_output_array.copy_shape(output_array.shape());
+      }
       auto& dequantized_output_minmax =
           dequantized_output_array.GetOrCreateMinMax();
       dequantized_output_minmax.min = output_minmax.min;
@@ -475,6 +477,9 @@ bool PartialQuantizeOutputs(
           AvailableArrayName(*model, output + "_fakequantized");
       auto& fakequantized_output_array =
           model->GetOrCreateArray(fakequantized_output);
+      if (output_array.has_shape()) {
+          fakequantized_output_array.copy_shape(output_array.shape());
+      }
       fakequantized_output_array.data_type = ArrayDataType::kFloat;
       auto& fakequantized_output_minmax =
           fakequantized_output_array.GetOrCreateMinMax();
