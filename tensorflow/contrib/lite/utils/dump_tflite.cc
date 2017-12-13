@@ -15,10 +15,6 @@ limitations under the License.
 // NOTE: this is an example driver that converts a tflite model to TensorFlow.
 // This is an example that will be integrated more tightly into tflite in
 // the future.
-//
-// Usage: bazel run -c opt \
-// tensorflow/contrib/lite/nnapi:nnapi_example -- <filename>
-//
 #include <cstdarg>
 #include <cstdio>
 #include "tensorflow/contrib/lite/builtin_op_data.h"
@@ -106,7 +102,7 @@ void Dump(const char* filename) {
 
   auto opcodes = model_->operator_codes();
   printf("number of opcodes: %d\n", opcodes->size());
-  for (int i = 0; i < opcodes->Length(); ++i) {
+  for (unsigned int i = 0; i < opcodes->Length(); ++i) {
     const auto* opcode = opcodes->Get(i);
     auto op = opcode->builtin_code();
     printf("  %2d: buildin_code: %2d %s\n", i, op, EnumNameBuiltinOperator(op));
@@ -114,7 +110,7 @@ void Dump(const char* filename) {
 
   auto* buffers = model_->buffers();
   printf("number of buffers: %d\n", buffers->size());
-  for (int i = 0; i < buffers->Length(); ++i) {
+  for (unsigned int i = 0; i < buffers->Length(); ++i) {
     const auto* buffer = buffers->Get(i);
     if (const auto* array = buffer->data()) {
       size_t size = array->size();
@@ -127,15 +123,36 @@ void Dump(const char* filename) {
   const tflite::SubGraph* subgraph = (*subgraphs)[0];
   auto operators = subgraph->operators();
   printf("number of operators: %d\n", operators->Length());
-  for (int i = 0; i < operators->Length(); ++i) {
+  for (unsigned int i = 0; i < operators->Length(); ++i) {
     const auto* op = operators->Get(i);
     int index = op->opcode_index();
     const auto* opcode = opcodes->Get(index);
     auto bop = opcode->builtin_code();
-    printf("  %2d: index %2d -> %2d %s\n", i, index, bop, EnumNameBuiltinOperator(bop));
+    printf("  %2d: index %2d -> %2d %s\n", i, index,
+           bop, EnumNameBuiltinOperator(bop));
   }
+
   auto tensors = subgraph->tensors();
   printf("number of tensors: %d\n", tensors->size());
+  for (unsigned int i = 0; i < tensors->Length(); ++i) {
+    const auto* tensor = tensors->Get(i);
+    printf("  %2d: name %s type %s buffer %d",
+           i, tensor->name()->c_str(),
+           EnumNameTensorType(tensor->type()),
+           tensor->buffer());
+
+    const auto* buffer = buffers->Get(tensor->buffer());
+    size_t size = 0;
+    if (const auto* array = buffer->data())
+      size = array->size();
+    printf(" -> size %zu", size);
+
+    const auto* shape = tensor->shape();
+    printf(" shape [");
+    for (auto s : *shape)
+        printf(" %d", s);
+    printf(" ] \n");
+  }
 }
 
 int main(int argc, char* argv[]) {
