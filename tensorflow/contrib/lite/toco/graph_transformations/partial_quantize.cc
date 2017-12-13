@@ -567,7 +567,6 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
     changed = QuantizeInputsAndOutputs(this, model, op);
   } else {
     changed = PartialQuantizeOutputs(this, model, op);
-    return false;
   }
 
   return changed;
