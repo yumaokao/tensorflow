@@ -21,8 +21,8 @@ cc_binary(
 load("//tensorflow:tensorflow.bzl", "tf_cc_binary")
 
 tf_cc_binary(
-    name = "run_tflite",
-    srcs = ["run_tflite.cc"],
+    name = "compare_tflite",
+    srcs = ["compare_tflite.cc"],
     deps = [
         ":cnpy",
         "//tensorflow/contrib/lite:builtin_op_data",

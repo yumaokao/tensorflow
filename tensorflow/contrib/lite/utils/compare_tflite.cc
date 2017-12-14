@@ -80,7 +80,7 @@ static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter) {
   return kTfLiteOk;
 }
 
-void Run(const char* filename, bool use_nnapi,
+void Compare(const char* filename, bool use_nnapi,
          const char* batch_xs, const char* batch_ys) {
   // Read tflite
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
   // for (float* p = data; p < data + 10; p++)
   //  printf(" %f\n", *p);
 
-  Run(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
+  Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
 
   return 0;
 }
