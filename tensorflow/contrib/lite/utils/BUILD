@@ -8,6 +8,14 @@ cc_binary(
     name = "dump_tflite",
     srcs = ["dump_tflite.cc"],
     deps = [
+        "//tensorflow/contrib/lite:framework",
+    ],
+)
+
+cc_binary(
+    name = "run_tflite",
+    srcs = ["run_tflite.cc"],
+    deps = [
         "//tensorflow/contrib/lite:builtin_op_data",
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",

@@ -17,7 +17,11 @@ limitations under the License.
 // the future.
 #include <cstdarg>
 #include <cstdio>
+#include "tensorflow/contrib/lite/builtin_op_data.h"
+#include "tensorflow/contrib/lite/interpreter.h"
+#include "tensorflow/contrib/lite/kernels/register.h"
 #include "tensorflow/contrib/lite/model.h"
+#include "tensorflow/contrib/lite/nnapi/NeuralNetworksShim.h"
 
 // TODO(aselle): FATAL leaves resources hanging.
 void FATAL(const char* format, ...) {
@@ -28,6 +32,65 @@ void FATAL(const char* format, ...) {
   fflush(stderr);
   exit(1);
 }
+
+#define CHECK_TFLITE_SUCCESS(x)                       \
+  if (x != kTfLiteOk) {                               \
+    FATAL("Aborting since tflite returned failure."); \
+  }
+
+#if 0
+void Interpret(const char* filename, const char* examples_filename,
+               bool use_nnapi) {
+  // TODO(aselle): Resize of input image should go here
+  // ...
+  // For now I am allocating all tensors. This means I am fixed size.
+  // So I am not using the variable size ability yet.
+  fprintf(stderr, "example file %s\n", examples_filename);
+  std::vector<tflite::testing::Example> examples;
+  CHECK_TFLITE_SUCCESS(
+      tflite::testing::ParseExamples(examples_filename, &examples));
+
+  for (const tflite::testing::Example& example : examples) {
+    auto model = tflite::FlatBufferModel::BuildFromFile(filename);
+    if (!model) FATAL("Cannot read file %s\n", filename);
+    std::unique_ptr<tflite::Interpreter> interpreter;
+    tflite::ops::builtin::BuiltinOpResolver builtins;
+
+    CHECK_TFLITE_SUCCESS(
+        tflite::InterpreterBuilder(*model, builtins)(&interpreter));
+
+    printf("Use nnapi is set to: %d\n", use_nnapi);
+    interpreter->UseNNAPI(use_nnapi);
+    CHECK_TFLITE_SUCCESS(
+        tflite::testing::FeedExample(interpreter.get(), example));
+
+    {
+      TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
+      if (float* data =
+              interpreter->typed_tensor<float>(interpreter->outputs()[0])) {
+        size_t num = tensor->bytes / sizeof(float);
+        for (float* p = data; p < data + num; p++) {
+          *p = 0;
+        }
+      }
+    }
+    interpreter->Invoke();
+
+    CHECK_TFLITE_SUCCESS(
+        tflite::testing::CheckOutputs(interpreter.get(), example));
+
+    printf("Result:\n");
+    TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
+    if (float* data =
+            interpreter->typed_tensor<float>(interpreter->outputs()[0])) {
+      size_t num = tensor->bytes / sizeof(float);
+      for (float* p = data; p < data + num; p++) {
+        printf(" %f", *p);
+      }
+    }
+  }
+}
+#endif
 
 void Dump(const char* filename) {
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
