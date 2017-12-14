@@ -92,85 +92,46 @@ void Interpret(const char* filename, const char* examples_filename,
 }
 #endif
 
-void Dump(const char* filename) {
+void Run(const char* filename, bool use_nnapi) {
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
   if (!model) FATAL("Cannot read file %s\n", filename);
 
-  auto model_ = model->GetModel();
-  auto* subgraphs = model_->subgraphs();
-  printf("number of subgraphs: %d\n", subgraphs->size());
+  std::unique_ptr<tflite::Interpreter> interpreter;
+  tflite::ops::builtin::BuiltinOpResolver builtins;
 
-  auto opcodes = model_->operator_codes();
-  printf("number of opcodes: %d\n", opcodes->size());
-  for (unsigned int i = 0; i < opcodes->Length(); ++i) {
-    const auto* opcode = opcodes->Get(i);
-    auto op = opcode->builtin_code();
-    printf("  %2d: buildin_code: %2d %s\n", i, op, EnumNameBuiltinOperator(op));
-  }
+  CHECK_TFLITE_SUCCESS(
+      tflite::InterpreterBuilder(*model, builtins)(&interpreter));
 
-  auto* buffers = model_->buffers();
-  printf("number of buffers: %d\n", buffers->size());
-  for (unsigned int i = 0; i < buffers->Length(); ++i) {
-    const auto* buffer = buffers->Get(i);
-    if (const auto* array = buffer->data()) {
-      size_t size = array->size();
-      printf("  %2d: size %zu\n", i, size);
-    } else {
-      printf("  %2d: size 0\n", i);
+  printf("Use nnapi is set to: %d\n", use_nnapi);
+  interpreter->UseNNAPI(use_nnapi);
+
+  interpreter->AllocateTensors();
+  TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
+  float* data = interpreter->typed_tensor<float>(interpreter->inputs()[0]);
+  if (data) {
+    size_t num = tensor->bytes / sizeof(float);
+    for (float* p = data; p < data + num; p++) {
+      *p = 0;
     }
   }
-
-  const tflite::SubGraph* subgraph = (*subgraphs)[0];
-  auto tensors = subgraph->tensors();
-  printf("number of tensors: %d\n", tensors->size());
-  for (unsigned int i = 0; i < tensors->Length(); ++i) {
-    const auto* tensor = tensors->Get(i);
-    printf("  %2d: name %s type %s buffer %d",
-           i, tensor->name()->c_str(),
-           EnumNameTensorType(tensor->type()),
-           tensor->buffer());
-
-    const auto* buffer = buffers->Get(tensor->buffer());
-    size_t size = 0;
-    if (const auto* array = buffer->data())
-      size = array->size();
-    printf(" -> size %zu", size);
-
-    const auto* shape = tensor->shape();
-    printf(" shape [");
-    for (auto s : *shape)
-        printf(" %d", s);
-    printf(" ] \n");
-  }
-
-  auto operators = subgraph->operators();
-  printf("number of operators: %d\n", operators->Length());
-  for (unsigned int i = 0; i < operators->Length(); ++i) {
-    const auto* op = operators->Get(i);
-    int index = op->opcode_index();
-    const auto* opcode = opcodes->Get(index);
-    auto bop = opcode->builtin_code();
-    auto botype = op->builtin_options_type();
-    printf("  %2d: index %2d -> %2d %s builtin_options_type %s\n",
-           i, index,
-           bop, EnumNameBuiltinOperator(bop),
-           EnumNameBuiltinOptions(botype));
-    const auto* inputs = op->inputs();
-    printf("      inputs: [");
-    for (auto i : *inputs) {
-        const auto* tensor = tensors->Get(i);
-        printf(" %s", tensor->name()->c_str());
+  tensor = interpreter->tensor(interpreter->outputs()[0]);
+  data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  if (data) {
+    size_t num = tensor->bytes / sizeof(float);
+    for (float* p = data; p < data + num; p++) {
+      *p = 0;
     }
-    const auto* outputs = op->outputs();
-    printf(" ] -> outputs: [");
-    for (auto o : *outputs) {
-        const auto* tensor = tensors->Get(o);
-        printf(" %s", tensor->name()->c_str());
-    }
-    printf(" ]\n");
-
   }
-
+  interpreter->Invoke();
+  printf("Result:\n");
+  tensor = interpreter->tensor(interpreter->outputs()[0]);
+  data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  if (data) {
+    size_t num = tensor->bytes / sizeof(float);
+    for (float* p = data; p < data + num; p++) {
+        printf(" %f", *p);
+    }
+  }
 }
 
 int main(int argc, char* argv[]) {
@@ -187,6 +148,6 @@ int main(int argc, char* argv[]) {
             argv[0]);
     return 1;
   }
-  Dump(argv[1]);
+  Run(argv[1], use_nnapi);
   return 0;
 }

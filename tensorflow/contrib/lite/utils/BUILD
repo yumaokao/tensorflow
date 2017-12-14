@@ -21,6 +21,9 @@ cc_binary(
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
     ],
+    linkopts = [
+        "-lm",
+    ],
 )
 
 filegroup(
