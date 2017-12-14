@@ -81,7 +81,7 @@ static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter) {
 }
 
 static TfLiteStatus CompareOutputs(tflite::Interpreter* interpreter,
-                                   const char* batch_ys) {
+                                   const char* batch_ys, bool ignore) {
   constexpr double kRelativeThreshold = 1e-2f;
   constexpr double kAbsoluteThreshold = 1e-4f;
 
@@ -92,6 +92,7 @@ static TfLiteStatus CompareOutputs(tflite::Interpreter* interpreter,
   if (!out_data || !ref_data)
     return kTfLiteError;
 
+  TfLiteStatus result = kTfLiteOk;
   size_t num = tensor->bytes / sizeof(float);
   for (size_t idx = 0; idx < num; idx++) {
     float computed = out_data[idx];
@@ -106,14 +107,16 @@ static TfLiteStatus CompareOutputs(tflite::Interpreter* interpreter,
     if (error_is_large) {
       fprintf(stdout, "output[%d][%zu] did not match %f vs reference %f\n",
               0, idx, computed, reference);
-      return kTfLiteError;
+      result = kTfLiteError;
+      if (ignore == false)
+        break;
     }
   }
-  return kTfLiteOk;
+  return result;
 }
 
 TfLiteStatus Compare(const char* filename, bool use_nnapi,
-         const char* batch_xs, const char* batch_ys) {
+         const char* batch_xs, const char* batch_ys, bool ignore) {
   // Read tflite
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
   if (!model) FATAL("Cannot read file %s\n", filename);
@@ -139,7 +142,7 @@ TfLiteStatus Compare(const char* filename, bool use_nnapi,
   interpreter->Invoke();
 
   // Compare outputs
-  TfLiteStatus result = CompareOutputs(interpreter.get(), batch_ys);
+  TfLiteStatus result = CompareOutputs(interpreter.get(), batch_ys, ignore);
   printf("Running: %s\n", filename);
   printf("  Result: %s\n", (result == kTfLiteOk) ? "OK" : "FAILED");
 
@@ -151,11 +154,13 @@ int main(int argc, char* argv[]) {
   string batch_xs = "";
   string batch_ys = "";
   bool use_nnapi = true;
+  bool ignore = false;
   std::vector<Flag> flag_list = {
 	Flag("tflite_file", &tflite_file, "tflite filename to be invoked (Must)"),
 	Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
 	Flag("batch_ys", &batch_ys, "batch_xy npy file to be compared with outputs (Must)"),
     Flag("use_nnapi", &use_nnapi, "use nn api i.e. 0,1"),
+    Flag("ignore", &ignore, "ignore error to continue compare all, 0,1"),
   };
   string usage = tensorflow::Flags::Usage(argv[0], flag_list);
   const bool parse_result = tensorflow::Flags::Parse(&argc, argv, flag_list);
@@ -168,7 +173,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
+  Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str(), ignore);
 
   return 0;
 }
