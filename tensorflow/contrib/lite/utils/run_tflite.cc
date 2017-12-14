@@ -17,11 +17,21 @@ limitations under the License.
 // the future.
 #include <cstdarg>
 #include <cstdio>
+#include <iostream>
+
 #include "tensorflow/contrib/lite/builtin_op_data.h"
 #include "tensorflow/contrib/lite/interpreter.h"
 #include "tensorflow/contrib/lite/kernels/register.h"
 #include "tensorflow/contrib/lite/model.h"
 #include "tensorflow/contrib/lite/nnapi/NeuralNetworksShim.h"
+
+#include "tensorflow/core/util/command_line_flags.h"
+#include "cnpy.h"
+#define LOG(x) std::cerr
+
+using tensorflow::Flag;
+using tensorflow::string;
+
 
 // TODO(aselle): FATAL leaves resources hanging.
 void FATAL(const char* format, ...) {
@@ -38,116 +48,112 @@ void FATAL(const char* format, ...) {
     FATAL("Aborting since tflite returned failure."); \
   }
 
-#if 0
-void Interpret(const char* filename, const char* examples_filename,
-               bool use_nnapi) {
-  // TODO(aselle): Resize of input image should go here
-  // ...
-  // For now I am allocating all tensors. This means I am fixed size.
-  // So I am not using the variable size ability yet.
-  fprintf(stderr, "example file %s\n", examples_filename);
-  std::vector<tflite::testing::Example> examples;
-  CHECK_TFLITE_SUCCESS(
-      tflite::testing::ParseExamples(examples_filename, &examples));
+static TfLiteStatus PrepareInputs(tflite::Interpreter* interpreter,
+                                  const char* batch_xs) {
+  TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
+  cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
+  float* dst_data = interpreter->typed_tensor<float>(interpreter->inputs()[0]);
+  float* src_data = arr.data<float>();
+  if (!dst_data || !src_data)
+    return kTfLiteError;
 
-  for (const tflite::testing::Example& example : examples) {
-    auto model = tflite::FlatBufferModel::BuildFromFile(filename);
-    if (!model) FATAL("Cannot read file %s\n", filename);
-    std::unique_ptr<tflite::Interpreter> interpreter;
-    tflite::ops::builtin::BuiltinOpResolver builtins;
+  size_t num = tensor->bytes / sizeof(float);
+  float* p = dst_data;
+  float* q = src_data;
+  for (p = dst_data, q = src_data; p < dst_data + num; p++, q++) {
+    *p = *q;
+  }
+  return kTfLiteOk;
+}
 
-    CHECK_TFLITE_SUCCESS(
-        tflite::InterpreterBuilder(*model, builtins)(&interpreter));
-
-    printf("Use nnapi is set to: %d\n", use_nnapi);
-    interpreter->UseNNAPI(use_nnapi);
-    CHECK_TFLITE_SUCCESS(
-        tflite::testing::FeedExample(interpreter.get(), example));
-
-    {
-      TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-      if (float* data =
-              interpreter->typed_tensor<float>(interpreter->outputs()[0])) {
-        size_t num = tensor->bytes / sizeof(float);
-        for (float* p = data; p < data + num; p++) {
-          *p = 0;
-        }
-      }
-    }
-    interpreter->Invoke();
-
-    CHECK_TFLITE_SUCCESS(
-        tflite::testing::CheckOutputs(interpreter.get(), example));
-
-    printf("Result:\n");
-    TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-    if (float* data =
-            interpreter->typed_tensor<float>(interpreter->outputs()[0])) {
-      size_t num = tensor->bytes / sizeof(float);
-      for (float* p = data; p < data + num; p++) {
-        printf(" %f", *p);
-      }
+static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter) {
+  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
+  float* data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  if (!data)
+    return kTfLiteError;
+  if (data) {
+    size_t num = tensor->bytes / sizeof(float);
+    for (float* p = data; p < data + num; p++) {
+      *p = 0;
     }
   }
+  return kTfLiteOk;
 }
-#endif
 
-void Run(const char* filename, bool use_nnapi) {
+void Run(const char* filename, bool use_nnapi,
+         const char* batch_xs, const char* batch_ys) {
+  // Read tflite
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
   if (!model) FATAL("Cannot read file %s\n", filename);
 
+  // Build interpreter
   std::unique_ptr<tflite::Interpreter> interpreter;
   tflite::ops::builtin::BuiltinOpResolver builtins;
-
   CHECK_TFLITE_SUCCESS(
       tflite::InterpreterBuilder(*model, builtins)(&interpreter));
 
+  // Allocate tensors
   printf("Use nnapi is set to: %d\n", use_nnapi);
   interpreter->UseNNAPI(use_nnapi);
-
   interpreter->AllocateTensors();
-  TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
-  float* data = interpreter->typed_tensor<float>(interpreter->inputs()[0]);
-  if (data) {
-    size_t num = tensor->bytes / sizeof(float);
-    for (float* p = data; p < data + num; p++) {
-      *p = 0;
-    }
-  }
-  tensor = interpreter->tensor(interpreter->outputs()[0]);
-  data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
-  if (data) {
-    size_t num = tensor->bytes / sizeof(float);
-    for (float* p = data; p < data + num; p++) {
-      *p = 0;
-    }
-  }
+
+  // Prepare inputs[0]
+  PrepareInputs(interpreter.get(), batch_xs);
+
+  // Clear outputs[0]
+  ClearOutputs(interpreter.get());
+
+  // Invoke = Run
   interpreter->Invoke();
+
+  // Compare outputs
   printf("Result:\n");
-  tensor = interpreter->tensor(interpreter->outputs()[0]);
-  data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
+  float* data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
   if (data) {
     size_t num = tensor->bytes / sizeof(float);
     for (float* p = data; p < data + num; p++) {
         printf(" %f", *p);
     }
+    printf("\n");
   }
 }
 
 int main(int argc, char* argv[]) {
+  string tflite_file = "";
+  string batch_xs = "";
+  string batch_ys = "";
   bool use_nnapi = true;
-  if (argc == 3) {
-    use_nnapi = strcmp(argv[2], "1") == 0 ? true : false;
+  std::vector<Flag> flag_list = {
+	Flag("tflite_file", &tflite_file, "tflite filename to be invoked (Must)"),
+	Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
+	Flag("batch_ys", &batch_ys, "batch_xy npy file to be compared with outputs (Must)"),
+    Flag("use_nnapi", &use_nnapi, "use nn api i.e. 0,1"),
+  };
+  string usage = tensorflow::Flags::Usage(argv[0], flag_list);
+  const bool parse_result = tensorflow::Flags::Parse(&argc, argv, flag_list);
+  if (!parse_result) {
+    LOG(ERROR) << usage;
+    return -1;
   }
-  if (argc < 2) {
-    fprintf(stderr,
-            "Compiled " __DATE__ __TIME__
-            "\n"
-            "Usage!!!: %s <tflite model>"
-            "{ use nn api i.e. 0,1}\n",
-            argv[0]);
-    return 1;
+  if (tflite_file == "" || batch_xs == "") {
+    LOG(ERROR) << usage;
+    return -1;
   }
-  Run(argv[1], use_nnapi);
+
+  cnpy::NpyArray arr = cnpy::npy_load(batch_ys.c_str());
+  printf("batch_ys.shape() [");
+  for (int i = 0; i < arr.shape.size(); i++)
+    printf(" %d", arr.shape[i]);
+  printf(" ]\n");
+  float* data = arr.data<float>();
+  for (int i = 0; i < 10; i++) {
+    printf(" %f\n", data[i]);
+  }
+  // for (float* p = data; p < data + 10; p++)
+  //  printf(" %f\n", *p);
+
+  Run(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
+
   return 0;
 }

@@ -4,6 +4,12 @@ package(default_visibility = [
 
 licenses(["notice"])  # Apache 2.0
 
+cc_library(
+    name = "cnpy",
+    srcs = ["cnpy.cc"],
+    hdrs = ["cnpy.h"],
+)
+
 cc_binary(
     name = "dump_tflite",
     srcs = ["dump_tflite.cc"],
@@ -12,14 +18,18 @@ cc_binary(
     ],
 )
 
-cc_binary(
+load("//tensorflow:tensorflow.bzl", "tf_cc_binary")
+
+tf_cc_binary(
     name = "run_tflite",
     srcs = ["run_tflite.cc"],
     deps = [
+        ":cnpy",
         "//tensorflow/contrib/lite:builtin_op_data",
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
+	"//tensorflow/core:tensorflow",
     ],
     linkopts = [
         "-lm",
