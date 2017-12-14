@@ -121,17 +121,6 @@ void Dump(const char* filename) {
   }
 
   const tflite::SubGraph* subgraph = (*subgraphs)[0];
-  auto operators = subgraph->operators();
-  printf("number of operators: %d\n", operators->Length());
-  for (unsigned int i = 0; i < operators->Length(); ++i) {
-    const auto* op = operators->Get(i);
-    int index = op->opcode_index();
-    const auto* opcode = opcodes->Get(index);
-    auto bop = opcode->builtin_code();
-    printf("  %2d: index %2d -> %2d %s\n", i, index,
-           bop, EnumNameBuiltinOperator(bop));
-  }
-
   auto tensors = subgraph->tensors();
   printf("number of tensors: %d\n", tensors->size());
   for (unsigned int i = 0; i < tensors->Length(); ++i) {
@@ -153,6 +142,35 @@ void Dump(const char* filename) {
         printf(" %d", s);
     printf(" ] \n");
   }
+
+  auto operators = subgraph->operators();
+  printf("number of operators: %d\n", operators->Length());
+  for (unsigned int i = 0; i < operators->Length(); ++i) {
+    const auto* op = operators->Get(i);
+    int index = op->opcode_index();
+    const auto* opcode = opcodes->Get(index);
+    auto bop = opcode->builtin_code();
+    auto botype = op->builtin_options_type();
+    printf("  %2d: index %2d -> %2d %s builtin_options_type %s\n",
+           i, index,
+           bop, EnumNameBuiltinOperator(bop),
+           EnumNameBuiltinOptions(botype));
+    const auto* inputs = op->inputs();
+    printf("      inputs: [");
+    for (auto i : *inputs) {
+        const auto* tensor = tensors->Get(i);
+        printf(" %s", tensor->name()->c_str());
+    }
+    const auto* outputs = op->outputs();
+    printf(" ] -> outputs: [");
+    for (auto o : *outputs) {
+        const auto* tensor = tensors->Get(o);
+        printf(" %s", tensor->name()->c_str());
+    }
+    printf(" ]\n");
+
+  }
+
 }
 
 int main(int argc, char* argv[]) {
