@@ -80,7 +80,39 @@ static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter) {
   return kTfLiteOk;
 }
 
-void Compare(const char* filename, bool use_nnapi,
+static TfLiteStatus CompareOutputs(tflite::Interpreter* interpreter,
+                                   const char* batch_ys) {
+  constexpr double kRelativeThreshold = 1e-2f;
+  constexpr double kAbsoluteThreshold = 1e-4f;
+
+  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
+  cnpy::NpyArray arr = cnpy::npy_load(batch_ys);
+  float* out_data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  float* ref_data = arr.data<float>();
+  if (!out_data || !ref_data)
+    return kTfLiteError;
+
+  size_t num = tensor->bytes / sizeof(float);
+  for (size_t idx = 0; idx < num; idx++) {
+    float computed = out_data[idx];
+    float reference = ref_data[idx];
+    float diff = std::abs(computed - reference);
+    bool error_is_large = false;
+    if (std::abs(reference) < kRelativeThreshold) {
+      error_is_large = (diff > kAbsoluteThreshold);
+    } else {
+      error_is_large = (diff > kRelativeThreshold * std::abs(reference));
+    }
+    if (error_is_large) {
+      fprintf(stdout, "output[%d][%zu] did not match %f vs reference %f\n",
+              0, idx, computed, reference);
+      return kTfLiteError;
+    }
+  }
+  return kTfLiteOk;
+}
+
+TfLiteStatus Compare(const char* filename, bool use_nnapi,
          const char* batch_xs, const char* batch_ys) {
   // Read tflite
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
@@ -107,16 +139,11 @@ void Compare(const char* filename, bool use_nnapi,
   interpreter->Invoke();
 
   // Compare outputs
-  printf("Result:\n");
-  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-  float* data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
-  if (data) {
-    size_t num = tensor->bytes / sizeof(float);
-    for (float* p = data; p < data + num; p++) {
-        printf(" %f", *p);
-    }
-    printf("\n");
-  }
+  TfLiteStatus result = CompareOutputs(interpreter.get(), batch_ys);
+  printf("Running: %s\n", filename);
+  printf("  Result: %s\n", (result == kTfLiteOk) ? "OK" : "FAILED");
+
+  return result;
 }
 
 int main(int argc, char* argv[]) {
@@ -140,18 +167,6 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << usage;
     return -1;
   }
-
-  cnpy::NpyArray arr = cnpy::npy_load(batch_ys.c_str());
-  printf("batch_ys.shape() [");
-  for (int i = 0; i < arr.shape.size(); i++)
-    printf(" %d", arr.shape[i]);
-  printf(" ]\n");
-  float* data = arr.data<float>();
-  for (int i = 0; i < 10; i++) {
-    printf(" %f\n", data[i]);
-  }
-  // for (float* p = data; p < data + 10; p++)
-  //  printf(" %f\n", *p);
 
   Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
 
