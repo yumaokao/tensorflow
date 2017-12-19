@@ -234,12 +234,14 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
   if (final_output_mul->type != OperatorType::kMul) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found final_output_mul " << op_index;
   Operator *state_output_tanh, *fc_output_sig;
   if (!MatchOperatorInputs(*final_output_mul, *model, OperatorType::kTanh,
                            &state_output_tanh, OperatorType::kLogistic,
                            &fc_output_sig)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state_output_tanh, fc_output_sig";
 
   // State output TanH
   // (We don't count an operator as ID'd until we verify it has the correct
@@ -249,11 +251,13 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &state_combine_add)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state_combine_add";
   string prev_state;
   if (!GetStateArrayForBackEdge(*model, state_output_tanh->inputs[0],
                                 &prev_state)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found prev_state";
 
   // State forget & remember addition
   Operator *state_forget_mul, *state_remember_mul;
@@ -265,6 +269,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
   if (state_forget_mul->inputs[0] != prev_state) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state forget and remember add";
 
   // State forget gate
   Operator* state_forget_sig;
@@ -273,6 +278,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &state_forget_sig)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state forget gate";
 
   // State remember gate
   Operator *state_remember_sig, *state_info_tanh;
@@ -281,6 +287,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &state_info_tanh)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state remember gate";
 
   // State remember "information" activation function
   Operator* fc_output_split;
@@ -288,6 +295,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            OperatorType::kTensorFlowSplit, &fc_output_split)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found fc_output_split";
   // State remember gate activation function
   Operator* tmp;
   if (!MatchOperatorInputs(*state_remember_sig, *model,
@@ -295,18 +303,21 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
       (tmp != fc_output_split)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state_remember_sig";
   // State forget gate activation function
   if (!MatchOperatorInputs(*state_forget_sig, *model,
                            OperatorType::kTensorFlowSplit, &tmp) ||
       (tmp != fc_output_split)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found state_forget_sig";
   // Fully connected output activation function
   if (!MatchOperatorInputs(*fc_output_sig, *model,
                            OperatorType::kTensorFlowSplit, &tmp) ||
       (tmp != fc_output_split)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found fc_output_sig";
   // Fully connected output split
   Operator* fully_connected;
   if (!MatchOperatorInputs(*fc_output_split, *model, OperatorType::kNone,
@@ -314,6 +325,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            &fully_connected)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found fully_connected";
 
   // Fully connected op
   Operator* concat_inputs;
@@ -323,6 +335,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                            nullptr)) {
     return false;
   }
+  LOG(INFO) << "YMK in IdentifyLstmCell found concat_inputs";
 
   // Emplace a new LSTM cell operator
   auto* lstm_cell_op = new LstmCellOperator;
@@ -344,6 +357,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
   AddMessageF("Creating %s replacing equivalent subgraph",
               LogName(*lstm_cell_op));
 
+  LOG(INFO) << "YMK in IdentifyLstmCell " << op_index << " new LstmCellOperator";
   // Create temp arrays used internally during runtime.
   const string base_name(FindLongestCommonPrefix(
       lstm_cell_op->outputs[LstmCellOperator::STATE_OUTPUT],

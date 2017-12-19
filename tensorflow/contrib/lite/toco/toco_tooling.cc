@@ -177,6 +177,7 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   const bool quantize_output =
       SupportsQuantization(output_format) && inference_type == QUANTIZED_UINT8;
 
+  LOG(INFO) << "YMK in Transform ";;
   if (quantize_output) {
     QCHECK_NE(toco_flags.inference_input_type(), FLOAT)
         << "Quantized inference is not allowed with float inputs.";
@@ -209,9 +210,9 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   }
   transformations.Add(new ConvertPureConvToDepthwise);
   // TFLite export does not yet support fused LSTM cell.
-  if (SupportsLstmCell(output_format)) {
+  // if (SupportsLstmCell(output_format)) {
     transformations.Add(new IdentifyLstmCell);
-  }
+  // }
   transformations.Add(new ResolveConstantConcatenation);
   RunGraphTransformations(model, "general graph transformations",
                           transformations);
