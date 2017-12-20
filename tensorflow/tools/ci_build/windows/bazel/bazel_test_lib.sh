@@ -21,7 +21,6 @@ failing_cpu_cc_tests="\
     //tensorflow/core:lib_core_status_test + \
     //tensorflow/core:lib_monitoring_collection_registry_test + \
     //tensorflow/core:lib_strings_numbers_test + \
-    //tensorflow/core:lib_strings_str_util_test + \
     //tensorflow/core/platform/hadoop:hadoop_file_system_test + \
     //tensorflow/core:platform_file_system_test + \
     //tensorflow/core:platform_logging_test + \
@@ -111,7 +110,7 @@ function run_configure_for_cpu_build {
     export TF_NEED_MKL=0
   fi
   export TF_NEED_VERBS=0
-  export TF_NEED_GCP=0
+  export TF_NEED_GCP=1
   export TF_NEED_HDFS=0
   export TF_NEED_OPENCL_SYCL=0
   echo "" | ./configure
