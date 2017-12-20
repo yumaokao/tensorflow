@@ -47,16 +47,18 @@ bool RemoveUnusedOp::Run(Model* model, std::size_t op_index) {
     bool found_output_as_rnn_state_array = false;
     for (const auto& rnn_state : model->flags.rnn_states()) {
       if (output == rnn_state.state_array()) {
-        CHECK(op->type == OperatorType::kTensorFlowUnsupported);
+        // TODO(YMK): second cell could not be checked
+        /* CHECK(op->type == OperatorType::kTensorFlowUnsupported);
         CHECK_EQ(static_cast<const TensorFlowUnsupportedOperator*>(op)
                      ->tensorflow_op,
-                 "Fill");
+                 "Fill"); */
         found_output_as_rnn_state_array = true;
         break;
       }
     }
     if (found_output_as_rnn_state_array) {
-      continue;
+      // continue;
+      return false;
     }
     for (const string& output_array : model->flags.output_arrays()) {
       if (output == output_array) {

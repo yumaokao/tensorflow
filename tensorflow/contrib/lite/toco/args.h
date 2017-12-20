@@ -162,10 +162,35 @@ class Arg<toco::StringMapList> final {
     }
     return true;
 #else
+    if (text == "mnist") {
+    // TODO(yumaokao): Remove these shortcut hacks
+      std::unordered_map<string, string> element;
+      element["back_edge_source_array"] = "basic_lstm_cell/Add_1";
+      element["state_array"] = "BasicLSTMCellZeroState/zeros";
+      element["size"] = "8192";
+      parsed_value_.elements.push_back(element);
+      element["back_edge_source_array"] = "basic_lstm_cell/Add_3";
+      element["state_array"] = "basic_lstm_cell/Add_1";
+      element["size"] = "8192";
+      parsed_value_.elements.push_back(element);
+      return true;
+    } else if (text == "mnist1") {
+      std::unordered_map<string, string> element;
+      element["back_edge_source_array"] = "rnn/basic_lstm_cell/Add_1";
+      element["state_array"] = "rnn/BasicLSTMCellZeroState/zeros";
+      element["size"] = "8192";
+      parsed_value_.elements.push_back(element);
+      element["back_edge_source_array"] = "rnn/basic_lstm_cell/Add_3";
+      element["state_array"] = "rnn/basic_lstm_cell/Add_1";
+      element["size"] = "8192";
+      parsed_value_.elements.push_back(element);
+      return true;
+    } else {
     // TODO(aselle): Fix argument parsing when absl supports structuredline
     fprintf(stderr, "%s:%d StringMapList arguments not supported\n", __FILE__,
             __LINE__);
     abort();
+    }
 #endif
   }
 

@@ -66,9 +66,12 @@ bool GraphTransformationsPass(int increment, Model* model,
       const int log_level =
           changed_now ? kLogLevelModelChanged : kLogLevelModelUnchanged;
       for (const string& message : transformation->Messages()) {
-        VLOG(log_level) << transformation->Name() << " " << made_a_change_msg
+        // VLOG(log_level) << transformation->Name() << " " << made_a_change_msg
+                        // << " at op_index=" << op_index << "/"
+                        // << model->operators.size() - 1 << ": " << message;
+          std::cout << transformation->Name() << " " << made_a_change_msg
                         << " at op_index=" << op_index << "/"
-                        << model->operators.size() - 1 << ": " << message;
+                        << model->operators.size() - 1 << ": " << message << std::endl;
       }
       transformation->ClearMessages();
       if (changed_now) {

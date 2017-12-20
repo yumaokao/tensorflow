@@ -177,7 +177,6 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   const bool quantize_output =
       SupportsQuantization(output_format) && inference_type == QUANTIZED_UINT8;
 
-  LOG(INFO) << "YMK in Transform ";;
   if (quantize_output) {
     QCHECK_NE(toco_flags.inference_input_type(), FLOAT)
         << "Quantized inference is not allowed with float inputs.";

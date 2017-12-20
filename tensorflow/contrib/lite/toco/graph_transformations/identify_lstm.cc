@@ -39,6 +39,7 @@ std::vector<std::unique_ptr<Operator>>::iterator FindOperator(
 bool GetStateArrayForBackEdge(const Model& model,
                               const string& back_edge_source_array,
                               string* state_array = nullptr) {
+  LOG(INFO) << "YMK in GetStateArrayForBackEdge " << back_edge_source_array;
   for (const auto& rnn_state : model.flags.rnn_states()) {
     if (back_edge_source_array == rnn_state.back_edge_source_array()) {
       // Found LSTM cell output
@@ -234,14 +235,14 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
   if (final_output_mul->type != OperatorType::kMul) {
     return false;
   }
-  LOG(INFO) << "YMK in IdentifyLstmCell found final_output_mul " << op_index;
+  // LOG(INFO) << "YMK in IdentifyLstmCell found final_output_mul " << op_index;
   Operator *state_output_tanh, *fc_output_sig;
   if (!MatchOperatorInputs(*final_output_mul, *model, OperatorType::kTanh,
                            &state_output_tanh, OperatorType::kLogistic,
                            &fc_output_sig)) {
     return false;
   }
-  LOG(INFO) << "YMK in IdentifyLstmCell found state_output_tanh, fc_output_sig";
+  LOG(INFO) << "YMK in IdentifyLstmCell found state_output_tanh, fc_output_sig " << op_index;
 
   // State output TanH
   // (We don't count an operator as ID'd until we verify it has the correct
@@ -257,7 +258,7 @@ bool IdentifyLstmCell::Run(Model* model, std::size_t op_index) {
                                 &prev_state)) {
     return false;
   }
-  LOG(INFO) << "YMK in IdentifyLstmCell found prev_state";
+  LOG(INFO) << "YMK in IdentifyLstmCell found prev_state: " << prev_state;
 
   // State forget & remember addition
   Operator *state_forget_mul, *state_remember_mul;
