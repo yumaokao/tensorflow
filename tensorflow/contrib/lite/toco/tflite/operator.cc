@@ -193,15 +193,21 @@ class Concatenation
   }
 };
 
-class DepthToSpace : public CustomOperator<DepthToSpaceOperator> {
+class DepthToSpace
+    : public BuiltinOperator<DepthToSpaceOperator,
+                             ::tflite::DepthToSpaceOptions,
+                             ::tflite::BuiltinOptions_DepthToSpaceOptions> {
  public:
-  using CustomOperator::CustomOperator;
-  void WriteOptions(const TocoOperator& op,
-                    flexbuffers::Builder* fbb) const override {
-    fbb->Int("block_size", op.block_size);
+  using BuiltinOperator::BuiltinOperator;
+  flatbuffers::Offset<TfLiteOptions> WriteOptions(
+      const TocoOperator& op,
+      flatbuffers::FlatBufferBuilder* builder) const override {
+    return ::tflite::CreateDepthToSpaceOptions(*builder, op.block_size);
   }
-  void ReadOptions(const flexbuffers::Map& m, TocoOperator* op) const override {
-    op->block_size = m["block_size"].AsInt64();
+
+  void ReadOptions(const TfLiteOptions& options,
+                   TocoOperator* op) const override {
+    op->block_size = options.block_size();
   }
 };
 
@@ -634,13 +640,13 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       new Softmax(::tflite::BuiltinOperator_SOFTMAX, OperatorType::kSoftmax));
   ops.emplace_back(new SpaceToDepth(::tflite::BuiltinOperator_SPACE_TO_DEPTH,
                                     OperatorType::kSpaceToDepth));
+  ops.emplace_back(new DepthToSpace(::tflite::BuiltinOperator_DEPTH_TO_SPACE,
+                                    OperatorType::kDepthToSpace));
   ops.emplace_back(
       new Svdf(::tflite::BuiltinOperator_SVDF, OperatorType::kSvdf));
 
   // Custom Operators.
   ops.emplace_back(new Cast("CAST", OperatorType::kCast));
-  ops.emplace_back(
-      new DepthToSpace("DEPTH_TO_SPACE", OperatorType::kDepthToSpace));
   ops.emplace_back(new FakeQuant("FAKE_QUANT", OperatorType::kFakeQuant));
   ops.emplace_back(new Split("SPLIT", OperatorType::kTensorFlowSplit));
   ops.emplace_back(new TensorFlowUnsupported(
