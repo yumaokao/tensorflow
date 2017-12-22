@@ -157,6 +157,7 @@ enum BuiltinOperator {
   BuiltinOperator_DEPTH_TO_SPACE = 5,
   BuiltinOperator_DEQUANTIZE = 6,
   BuiltinOperator_EMBEDDING_LOOKUP = 7,
+  BuiltinOperator_FLOOR = 8,
   BuiltinOperator_FULLY_CONNECTED = 9,
   BuiltinOperator_HASHTABLE_LOOKUP = 10,
   BuiltinOperator_L2_NORMALIZATION = 11,
@@ -190,7 +191,7 @@ enum BuiltinOperator {
   BuiltinOperator_MAX = BuiltinOperator_BATCH_TO_SPACE_ND
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[37] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[38] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -200,6 +201,7 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[37] {
       BuiltinOperator_DEPTH_TO_SPACE,
       BuiltinOperator_DEQUANTIZE,
       BuiltinOperator_EMBEDDING_LOOKUP,
+      BuiltinOperator_FLOOR,
       BuiltinOperator_FULLY_CONNECTED,
       BuiltinOperator_HASHTABLE_LOOKUP,
       BuiltinOperator_L2_NORMALIZATION,
@@ -241,7 +243,7 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "DEPTH_TO_SPACE",
                                 "DEQUANTIZE",
                                 "EMBEDDING_LOOKUP",
-                                "",
+                                "FLOOR",
                                 "FULLY_CONNECTED",
                                 "HASHTABLE_LOOKUP",
                                 "L2_NORMALIZATION",
