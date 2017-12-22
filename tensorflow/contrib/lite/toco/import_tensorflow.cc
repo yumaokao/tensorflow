@@ -53,6 +53,7 @@ using tensorflow::DT_FLOAT;
 using tensorflow::DT_INT32;
 using tensorflow::DT_INT64;
 using tensorflow::DT_UINT8;
+using tensorflow::DT_QUINT8;
 using tensorflow::GraphDef;
 using tensorflow::NodeDef;
 using tensorflow::TensorProto;
@@ -125,7 +126,7 @@ const AttrValue::ListValue& GetListAttr(const NodeDef& node,
 }
 
 ArrayDataType ConvertDataType(tensorflow::DataType dtype) {
-  if (dtype == DT_UINT8)
+  if (dtype == DT_UINT8 || dtype == DT_QUINT8)
     return ArrayDataType::kUint8;
   else if (dtype == DT_FLOAT)
     return ArrayDataType::kFloat;
@@ -530,6 +531,19 @@ void ConvertFakeQuantWithMinMaxVars(
   const int num_inputs = GetInputsCount(node, tf_import_flags);
   CHECK(num_inputs == 3 || num_inputs == 4);
   auto* op = new FakeQuantOperator;
+  for (int i = 0; i < 3; i++) {
+    op->inputs.push_back(node.input(i));
+  }
+  op->outputs.push_back(node.name());
+  model->operators.emplace_back(op);
+}
+
+void ConvertDequantizeOperator(
+    const NodeDef& node, const TensorFlowImportFlags& tf_import_flags,
+    Model* model) {
+  CHECK_EQ(node.op(), "Dequantize");
+  CHECK_EQ(GetInputsCount(node, tf_import_flags), 3);
+  auto* op = new DequantizeOperator;
   for (int i = 0; i < 3; i++) {
     op->inputs.push_back(node.input(i));
   }
@@ -1766,6 +1780,8 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertFakeQuantWithMinMaxVars(node, tf_import_flags, model);
     } else if (node.op() == "FakeQuantWithMinMaxArgs") {
       ConvertFakeQuantWithMinMaxArgs(node, tf_import_flags, model);
+    } else if (node.op() == "Dequantize") {
+      ConvertDequantizeOperator(node, tf_import_flags, model);
     } else if (node.op() == "Neg") {
       ConvertNegOperator(node, tf_import_flags, model);
     } else if (node.op() == "Rsqrt") {

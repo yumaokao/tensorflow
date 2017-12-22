@@ -197,6 +197,7 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   }
   if (output_format != TENSORFLOW_GRAPHDEF) {
     transformations.Add(new ResolveConstantFakeQuant);
+    transformations.Add(new ResolveConstantDequantize);
   }
   if (toco_flags.drop_fake_quant()) {
     transformations.Add(new DropFakeQuant);
