@@ -45,7 +45,7 @@ bool ResolveConstantDequantize::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  const auto& input_array = model->GetArray(dequantize_op->inputs[0]);
+  auto& input_array = model->GetArray(dequantize_op->inputs[0]);
   auto& output_array = model->GetArray(dequantize_op->outputs[0]);
   CHECK(input_array.data_type == ArrayDataType::kUint8);
   output_array.data_type = ArrayDataType::kFloat;
@@ -60,6 +60,10 @@ bool ResolveConstantDequantize::Run(Model* model, std::size_t op_index) {
   const auto& input2_buffer = input2_array.GetBuffer<ArrayDataType::kFloat>();
   CHECK(input1_buffer.data.size() == 1);
   CHECK(input2_buffer.data.size() == 1);
+
+  auto& input_minmax = input_array.GetOrCreateMinMax();
+  input_minmax.min = input1_buffer.data[0];
+  input_minmax.max = input2_buffer.data[0];
 
   auto& output_minmax = output_array.GetOrCreateMinMax();
   output_minmax.min = input1_buffer.data[0];
