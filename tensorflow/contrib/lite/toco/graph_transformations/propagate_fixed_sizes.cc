@@ -588,6 +588,10 @@ void ProcessL2PoolOperator(Model* model, L2PoolOperator* op) {
 }
 
 void ProcessResizeBilinearOperator(Model* model, ResizeBilinearOperator* op) {
+  if (op->inputs.size() == 1) {
+    // Bail if we already have set output shape and remove op->inputs[1]
+    return;
+  }
   CHECK_EQ(op->inputs.size(), 2);
   CHECK_EQ(op->outputs.size(), 1);
 
