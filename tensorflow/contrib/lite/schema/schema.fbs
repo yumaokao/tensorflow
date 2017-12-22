@@ -108,6 +108,7 @@ enum BuiltinOperator : byte {
   UNIDIRECTIONAL_SEQUENCE_RNN = 35,
   GATHER = 36,
   BATCH_TO_SPACE_ND = 37,
+  QUANTIZE = 50,
 }
 
 // Options for the builtin operators.

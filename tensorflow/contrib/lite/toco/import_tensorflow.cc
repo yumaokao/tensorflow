@@ -551,6 +551,19 @@ void ConvertDequantizeOperator(
   model->operators.emplace_back(op);
 }
 
+void ConvertQuantizeV2Operator(
+    const NodeDef& node, const TensorFlowImportFlags& tf_import_flags,
+    Model* model) {
+  CHECK_EQ(node.op(), "QuantizeV2");
+  CHECK_EQ(GetInputsCount(node, tf_import_flags), 3);
+  auto* op = new QuantizeOperator;
+  for (int i = 0; i < 3; i++) {
+    op->inputs.push_back(node.input(i));
+  }
+  op->outputs.push_back(node.name());
+  model->operators.emplace_back(op);
+}
+
 void ConvertNegOperator(const NodeDef& node,
                         const TensorFlowImportFlags& tf_import_flags,
                         Model* model) {
@@ -1891,6 +1904,8 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertTransposeOperator(node, tf_import_flags, model);
     } else if (node.op() == "ArgMax") {
       ConvertArgMaxOperator(node, tf_import_flags, model);
+    } else if (node.op() == "QuantizeV2") {
+      ConvertQuantizeV2Operator(node, tf_import_flags, model);
     } else {
       ConvertUnsupportedOperator(node, tf_import_flags, model);
     }

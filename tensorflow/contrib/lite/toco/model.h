@@ -40,6 +40,7 @@ enum class OperatorType {
   kDepthToSpace,
   kSpaceToDepth,
   kDequantize,
+  kQuantize,
   kDiv,
   kExpandDims,
   kFill,
@@ -397,6 +398,18 @@ struct FullyConnectedOperator : Operator {
 // TensorFlow equivalent: Dequantize
 struct DequantizeOperator : Operator {
   DequantizeOperator() : Operator(OperatorType::kDequantize) {}
+};
+
+// Quantize operator.
+//
+// Inputs:
+//   inputs[0]: required: the input float array
+//   inputs[1]: required: the min range
+//   inputs[2]: required: the max range
+//
+// TensorFlow equivalent: QuantizeV2
+struct QuantizeOperator : Operator {
+  QuantizeOperator() : Operator(OperatorType::kQuantize) {}
 };
 
 // Batch-normalization operator.

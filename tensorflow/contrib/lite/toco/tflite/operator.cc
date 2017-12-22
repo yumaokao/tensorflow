@@ -663,6 +663,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
   // Simple Operators.
   ops.emplace_back(new SimpleOperator<DequantizeOperator>(
       "DEQUANTIZE", OperatorType::kDequantize));
+  ops.emplace_back(new SimpleOperator<QuantizeOperator>(
+      "QUANTIZE", OperatorType::kQuantize));
   ops.emplace_back(
       new SimpleOperator<FloorOperator>("FLOOR", OperatorType::kFloor));
   ops.emplace_back(

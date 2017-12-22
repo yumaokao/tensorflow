@@ -187,11 +187,12 @@ enum BuiltinOperator {
   BuiltinOperator_UNIDIRECTIONAL_SEQUENCE_RNN = 35,
   BuiltinOperator_GATHER = 36,
   BuiltinOperator_BATCH_TO_SPACE_ND = 37,
+  BuiltinOperator_QUANTIZE = 50,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
-  BuiltinOperator_MAX = BuiltinOperator_BATCH_TO_SPACE_ND
+  BuiltinOperator_MAX = BuiltinOperator_QUANTIZE
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[38] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[39] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -230,7 +231,8 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[38] {
       BuiltinOperator_PAD,
       BuiltinOperator_UNIDIRECTIONAL_SEQUENCE_RNN,
       BuiltinOperator_GATHER,
-      BuiltinOperator_BATCH_TO_SPACE_ND};
+      BuiltinOperator_BATCH_TO_SPACE_ND,
+      BuiltinOperator_QUANTIZE};
   return values;
 }
 
@@ -273,6 +275,19 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "UNIDIRECTIONAL_SEQUENCE_RNN",
                                 "GATHER",
                                 "BATCH_TO_SPACE_ND",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "QUANTIZE",
                                 nullptr};
   return names;
 }
