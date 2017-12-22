@@ -53,6 +53,9 @@ bool PropagateArrayDataTypes::Run(Model* model, std::size_t op_index) {
       op->type == OperatorType::kResizeBilinear) {
     // These operators unconditionally produce float outputs
     SetDataTypeForAllOutputs(model, op, ArrayDataType::kFloat);
+  } else if (op->type == OperatorType::kQuantize) {
+    // These operators unconditionally produce uint8 outputs
+    SetDataTypeForAllOutputs(model, op, ArrayDataType::kUint8);
   } else if (op->type == OperatorType::kTensorFlowLess ||
              op->type == OperatorType::kTensorFlowLessEqual ||
              op->type == OperatorType::kTensorFlowGreater ||

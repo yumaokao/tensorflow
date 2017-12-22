@@ -556,6 +556,8 @@ void ConvertQuantizeV2Operator(
     Model* model) {
   CHECK_EQ(node.op(), "QuantizeV2");
   CHECK_EQ(GetInputsCount(node, tf_import_flags), 3);
+  const auto data_type = GetDataTypeAttr(node, "T");
+  CHECK(data_type == DT_QUINT8 || data_type == DT_UINT8);
   auto* op = new QuantizeOperator;
   for (int i = 0; i < 3; i++) {
     op->inputs.push_back(node.input(i));
