@@ -317,6 +317,9 @@ void LogArray(int log_level, const Model& model, const string& name) {
     case ArrayDataType::kUint8:
       VLOG(log_level) << "  Data type: kUint8";
       break;
+    case ArrayDataType::kString:
+      VLOG(log_level) << "  Data type: kString";
+      break;
     default:
       VLOG(log_level) << "  Data type: other (numerical value: "
                       << static_cast<int>(array.data_type) << ")";
@@ -334,6 +337,9 @@ void LogArray(int log_level, const Model& model, const string& name) {
       break;
     case ArrayDataType::kUint8:
       VLOG(log_level) << "  Final type: kUint8";
+      break;
+    case ArrayDataType::kString:
+      VLOG(log_level) << "  Final type: kString";
       break;
     default:
       VLOG(log_level) << "  Final type: other (numerical value: "
@@ -1254,6 +1260,11 @@ int ElementSize(ArrayDataType data_type) {
       return 1;
     case ArrayDataType::kInt64:
       return 8;
+    // Usually not critical limitation because strings are only input and/or
+    // output.
+    case ArrayDataType::kString:
+      LOG(FATAL) << "Transient arrays with strings are not supported yet";
+      return 0;
     default:
       LOG(FATAL) << "Should not get here.";
       return 0;
