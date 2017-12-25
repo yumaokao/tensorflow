@@ -36,6 +36,22 @@ tf_cc_binary(
     ],
 )
 
+tf_cc_binary(
+    name = "run_tflite",
+    srcs = ["run_tflite.cc"],
+    deps = [
+        ":cnpy",
+        "//tensorflow/contrib/lite:builtin_op_data",
+        "//tensorflow/contrib/lite:framework",
+        "//tensorflow/contrib/lite/kernels:builtin_ops",
+        "//tensorflow/contrib/lite/nnapi:nnapi_lib",
+	"//tensorflow/core:tensorflow",
+    ],
+    linkopts = [
+        "-lm",
+    ],
+)
+
 filegroup(
     name = "all_files",
     srcs = glob(
