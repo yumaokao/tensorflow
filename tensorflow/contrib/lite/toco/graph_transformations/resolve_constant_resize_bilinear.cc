@@ -58,8 +58,13 @@ bool ResolveConstantResizeBilinear::Run(Model* model, std::size_t op_index) {
   CHECK_EQ(output_array.shape().dimensions_count(), 4);
   std::vector<int> output_dims(output_array.shape().dims());
   // Check new_height, new_width
-  CHECK_EQ(output_dims[1], input1_buffer.data[0]);
-  CHECK_EQ(output_dims[2], input1_buffer.data[1]);
+  int new_height = input1_buffer.data[0];
+  int new_width = input1_buffer.data[1];
+  CHECK_EQ(output_dims[1], new_height);
+  CHECK_EQ(output_dims[2], new_width);
+  // Push to resize_bilinear_op->new_height, ->new_width
+  resize_bilinear_op->new_height = new_height;
+  resize_bilinear_op->new_width = new_width;
 
   // Now could remove inputs[1]
   if (CountOpsWithInput(*model, resize_bilinear_op->inputs[1]) == 1) {
