@@ -214,6 +214,7 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
     }
   }
   transformations.Add(new ConvertPureConvToDepthwise);
+  transformations.Add(new IdentifyGruCell);
   // TFLite export does not yet support fused LSTM cell.
   if (SupportsLstmCell(output_format)) {
     transformations.Add(new IdentifyLstmCell);

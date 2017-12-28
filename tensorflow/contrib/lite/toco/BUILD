@@ -184,6 +184,7 @@ cc_library(
         "graph_transformations/identify_l2_normalization.cc",
         "graph_transformations/identify_l2_pool.cc",
         "graph_transformations/identify_lstm.cc",
+        "graph_transformations/identify_gru.cc",
         "graph_transformations/identify_relu1.cc",
         "graph_transformations/make_initial_dequantize_operator.cc",
         "graph_transformations/propagate_array_data_types.cc",
