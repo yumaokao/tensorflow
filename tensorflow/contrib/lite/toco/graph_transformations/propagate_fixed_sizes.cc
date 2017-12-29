@@ -642,6 +642,84 @@ void ProcessResizeBilinearOperator(Model* model, ResizeBilinearOperator* op) {
              input_data_shape.dims(3)}));
 }
 
+void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
+  // I/O arrays should be allocated on creation of op.
+  QCHECK_EQ(op->inputs.size(), GruCellOperator::NUM_INPUTS);
+  QCHECK_EQ(op->outputs.size(), GruCellOperator::NUM_OUTPUTS);
+
+  const auto& input_array =
+      *model->arrays[op->inputs[GruCellOperator::DATA_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!input_array.has_shape()) {
+    return;
+  }
+  const auto& input_shape = input_array.shape();
+  CHECK_GE(input_shape.dimensions_count(), 2);
+
+  const auto& prev_state_array =
+      *model->arrays[op->inputs[GruCellOperator::PREV_STATE_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!prev_state_array.has_shape()) {
+    return;
+  }
+  const auto& prev_state_shape = prev_state_array.shape();
+  CHECK_GE(prev_state_shape.dimensions_count(), 2);
+
+  const auto& weight_activation_array =
+      *model->arrays[op->inputs[GruCellOperator::WEIGHTS_ACTIVATION_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!weight_activation_array.has_shape()) {
+    return;
+  }
+  const auto& weight_activation_shape = weight_activation_array.shape();
+  CHECK_EQ(weight_activation_shape.dimensions_count(), 2);
+
+  const auto& bias_activation_array =
+      *model->arrays[op->inputs[GruCellOperator::BIASES_ACTIVATION_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!bias_activation_array.has_shape()) {
+    return;
+  }
+  const auto& bias_activation_shape = bias_activation_array.shape();
+  CHECK_GE(bias_activation_shape.dimensions_count(), 1);
+  CHECK_EQ(weight_activation_shape.dims(0), bias_activation_shape.dims(0));
+
+  const auto& weight_gate_array =
+      *model->arrays[op->inputs[GruCellOperator::WEIGHTS_GATE_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!weight_gate_array.has_shape()) {
+    return;
+  }
+  const auto& weight_gate_shape = weight_gate_array.shape();
+  CHECK_EQ(weight_gate_shape.dimensions_count(), 2);
+
+  const auto& bias_gate_array =
+      *model->arrays[op->inputs[GruCellOperator::BIASES_GATE_INPUT]];
+  // Yield until all input dims have been resolved.
+  if (!bias_gate_array.has_shape()) {
+    return;
+  }
+  const auto& bias_gate_shape = bias_gate_array.shape();
+  CHECK_GE(bias_gate_shape.dimensions_count(), 1);
+  CHECK_EQ(weight_gate_shape.dims(0), bias_gate_shape.dims(0));
+  CHECK_EQ(weight_gate_shape.dims(0) % 2, 0);
+
+  const int depth = weight_gate_shape.dims(0) / 2;
+  CHECK_EQ(depth, weight_activation_shape.dims(0));
+  const int input_depth = input_shape.dims(input_shape.dimensions_count() - 1);
+  const int fc_activation_input_depth = weight_activation_shape.dims(1);
+  const int fc_gate_input_depth = weight_gate_shape.dims(1);
+  CHECK_EQ(fc_activation_input_depth, fc_gate_input_depth);
+  CHECK_EQ(input_depth + depth, fc_activation_input_depth);
+  
+  // Set output dimensions
+  Shape output_shape(input_shape);
+  (*output_shape.mutable_dims())[output_shape.dimensions_count() - 1] = depth;
+  
+  model->GetArray(op->outputs[GruCellOperator::STATE_OUTPUT])
+      .copy_shape(output_shape);
+}
+
 void ProcessLstmCellOperator(Model* model, LstmCellOperator* op) {
   // I/O arrays should be allocated on creation of op.
   QCHECK_EQ(op->inputs.size(), LstmCellOperator::NUM_INPUTS);
@@ -1156,6 +1234,9 @@ bool PropagateFixedSizes::Run(Model* model, std::size_t op_index) {
     case OperatorType::kResizeBilinear:
       ProcessResizeBilinearOperator(model,
                                     static_cast<ResizeBilinearOperator*>(op));
+      break;
+    case OperatorType::kGruCell:
+      ProcessGruCellOperator(model, static_cast<GruCellOperator*>(op));
       break;
     case OperatorType::kLstmCell:
       ProcessLstmCellOperator(model, static_cast<LstmCellOperator*>(op));

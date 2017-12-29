@@ -47,6 +47,7 @@ enum class OperatorType {
   kFloorDiv,
   kFloorMod,
   kFullyConnected,
+  kGruCell,
   kL2Normalization,
   kL2Pool,
   kLstmCell,
@@ -459,6 +460,23 @@ struct BatchNormalizationOperator : Operator {
 // and replace them by L2NormalizationOperator's. See IdentifyL2Normalization.
 struct L2NormalizationOperator : Operator {
   L2NormalizationOperator() : Operator(OperatorType::kL2Normalization) {}
+};
+
+struct GruCellOperator : Operator {
+  enum Inputs {
+    DATA_INPUT = 0,
+    PREV_STATE_INPUT = 1,
+    WEIGHTS_ACTIVATION_INPUT = 2,
+    BIASES_ACTIVATION_INPUT = 3,
+    WEIGHTS_GATE_INPUT = 4,
+    BIASES_GATE_INPUT = 5,
+    NUM_INPUTS = 6
+  };
+  enum Outputs {
+    STATE_OUTPUT = 0,
+    NUM_OUTPUTS = 1
+  };
+  GruCellOperator() : Operator(OperatorType::kGruCell) {}
 };
 
 // LSTM Cell operator.

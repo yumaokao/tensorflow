@@ -132,6 +132,7 @@ void DiscardUselessConnectedComponentsAndRNNBackEdges(Model* model) {
   }
 }
 
+//#define MTK_DEBUG
 bool GraphTransformationsPass(int increment, Model* model,
                               const GraphTransformationsSet& transformations) {
   CHECK(increment == 1 || increment == -1);
@@ -142,11 +143,23 @@ bool GraphTransformationsPass(int increment, Model* model,
   int op_index = increment == 1 ? 0 : model->operators.size() - 1;
   while (true) {
     bool changed_now = false;
+#ifdef MTK_DEBUG
+    printf("=====\n");
+    for (const auto& op : model->operators)
+      printf("%d ", op->type);
+    printf("\n=====\n");
+#endif
     // Loop over all transformations at the current position in the graph.
     for (const auto& transformation : transformations) {
       CHECK(!changed_now);
       CHECK(transformation->Messages().empty());
+#ifdef MTK_DEBUG
+        printf("before %s\n", transformation->Name());
+#endif
       changed_now = transformation->Run(model, op_index);
+#ifdef MTK_DEBUG
+        printf("after %s\n", transformation->Name());
+#endif
       if (changed_now) {
         DumpGraphvizVideoFrame(*model);
         CHECK(!model->operators.empty());

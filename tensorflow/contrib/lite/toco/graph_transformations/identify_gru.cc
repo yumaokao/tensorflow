@@ -22,6 +22,50 @@ std::vector<std::unique_ptr<Operator>>::iterator FindOperator(
   return it;
 }
 
+// Similar to MatchOperatorInputs. However, op_type is considered
+// 'Don't care' if it is OperatorType::kNone.
+//
+// This is used for some operators that the input opreator type may change
+bool MatchPartialOperatorInputs(const Operator& op, const Model& model,
+                         OperatorType a_op_type, Operator** a_op,
+                         OperatorType b_op_type, Operator** b_op) {
+  // Check for required number of inputs
+  if (op.inputs.size() != 2) {
+    return false;
+  }
+
+  // Check if first input is disconnected/connected to an operator
+  Operator* x = GetOpWithOutput(model, op.inputs[0]);
+  if ((a_op_type != OperatorType::kNone) && (x == nullptr)) {
+    return false;
+  }
+
+  // Check that first operator, if connected, is of correct type
+  if ((x != nullptr) && (a_op_type != OperatorType::kNone) && (x->type != a_op_type)) {
+    return false;
+  }
+
+  // Check if second input is disconnected/connected to an operator
+  Operator* y = GetOpWithOutput(model, op.inputs[1]);
+  if ((b_op_type != OperatorType::kNone) && (y == nullptr)) {
+    return false;
+  }
+
+  // Check that second operator, if connected, is of correct type
+  if ((y != nullptr) && (b_op_type != OperatorType::kNone) && (y->type != b_op_type)) {
+    return false;
+  }
+
+  // Successfully matched. Optionally return matching input operators.
+  if (a_op != nullptr) {
+    *a_op = x;
+  }
+  if (b_op != nullptr) {
+    *b_op = y;
+  }
+  return true;
+}
+
 // Returns true if the given operator has exactly 1 input, and is connected to
 // the given op_type.
 // We use kNone to indicate an input unattached to an operator output. Usually
@@ -183,6 +227,7 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
   if (final_output_add->type != OperatorType::kAdd) {
     return false;
   }
+
   Operator *prev_state_mul, *candidate_activation_mul;
   if (!MatchOperatorInputs(*final_output_add, *model, OperatorType::kMul,
                            &prev_state_mul, OperatorType::kMul,
@@ -197,14 +242,14 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  Operator *fc_reset_input;
+  Operator *fc_activation;
   if (!MatchOperatorInputs(*candidate_activation, *model, OperatorType::kFullyConnected,
-                           &fc_reset_input)) {
+                           &fc_activation)) {
     return false;
   }
 
   Operator *concat_reset_input;
-  if (!MatchOperatorInputs(*fc_reset_input, *model,
+  if (!MatchOperatorInputs(*fc_activation, *model,
                            OperatorType::kConcatenation, &concat_reset_input,
                            OperatorType::kNone, nullptr, OperatorType::kNone,
                            nullptr)) {
@@ -219,15 +264,24 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
   }
 
   Operator *gate_output_split, *prev_state;
-  if (!MatchOperatorInputs(*prev_state_mul, *model, OperatorType::kTensorFlowSplit,
-                            &gate_output_split, OperatorType::kAdd, &prev_state)) { // kAdd is the output of previous gru_cell
+  // the 2nd input is the previous state
+  if (!MatchPartialOperatorInputs(*prev_state_mul, *model, OperatorType::kTensorFlowSplit, &gate_output_split,
+                            OperatorType::kNone, &prev_state)) {
     return false;
   }
 
   Operator *tmp, *tmp2;
-    if (!MatchOperatorInputs(*reset_state_mul, *model, OperatorType::kTensorFlowSplit, &tmp,
-                            OperatorType::kAdd, &tmp2) || // kAdd is the output of previous gru_cell
+  // the 2nd input is the previous state
+  if (!MatchPartialOperatorInputs(*reset_state_mul, *model, OperatorType::kTensorFlowSplit, &tmp,
+                            OperatorType::kNone, &tmp2) || // kAdd is the output of previous gru_cell
       (tmp != gate_output_split) || (tmp2 != prev_state)) {
+    return false;
+  }
+
+  Operator *tmp3;
+  if (!MatchOperatorInputs(*update_gate_sub, *model, OperatorType::kNone, nullptr,
+                            OperatorType::kTensorFlowSplit, &tmp3) ||
+      (tmp3 != gate_output_split) || (update_gate_sub->inputs[1] != prev_state_mul->inputs[0])) {
     return false;
   }
 
@@ -237,14 +291,14 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  Operator *fc_input;
+  Operator *fc_gate;
   if (!MatchOperatorInputs(*gate_output, *model, OperatorType::kFullyConnected,
-                           &fc_input)) {
+                           &fc_gate)) {
     return false;
   }
 
   Operator *concat_input;
-  if (!MatchOperatorInputs(*fc_input, *model,
+  if (!MatchOperatorInputs(*fc_gate, *model,
                            OperatorType::kConcatenation, &concat_input,
                            OperatorType::kNone, nullptr, OperatorType::kNone,
                            nullptr)) {
@@ -254,15 +308,66 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
   if (concat_input->inputs[0] != concat_reset_input->inputs[0]) { // cur input
     return false;
   }
-  if (concat_input->inputs[1] != reset_state_mul->inputs[1]) { // prev state
+  if ((concat_input->inputs[1] != reset_state_mul->inputs[1]) || (concat_input->inputs[1] != prev_state_mul->inputs[1])) { // prev state
     return false;
   }
 
-  printf("\n===== Found GRU cell =====\n");
+  printf("\n===== Found GRU cell @ %p=====\n", final_output_add);
 
+#if 1
   // Emplace a new GRU cell operator
-  // TODO
-  return false;
+  auto* gru_cell_op = new GruCellOperator;
+  gru_cell_op->inputs.resize(GruCellOperator::NUM_INPUTS);
+  gru_cell_op->inputs[GruCellOperator::DATA_INPUT] = concat_input->inputs[0];
+  gru_cell_op->inputs[GruCellOperator::PREV_STATE_INPUT] = concat_input->inputs[1];
+  gru_cell_op->inputs[GruCellOperator::WEIGHTS_ACTIVATION_INPUT] = fc_activation->inputs[1];
+  gru_cell_op->inputs[GruCellOperator::BIASES_ACTIVATION_INPUT] = fc_activation->inputs[2];
+  gru_cell_op->inputs[GruCellOperator::WEIGHTS_GATE_INPUT] = fc_gate->inputs[1];
+  gru_cell_op->inputs[GruCellOperator::BIASES_GATE_INPUT] = fc_gate->inputs[2];
+
+  gru_cell_op->outputs.resize(GruCellOperator::NUM_OUTPUTS);
+  gru_cell_op->outputs[GruCellOperator::STATE_OUTPUT] = final_output_add->outputs[0];
+  model->operators.emplace(op_it, gru_cell_op);
+  AddMessageF("Creating %s replacing equivalent subgraph",
+              LogName(*gru_cell_op));
+
+  // Delete arrays and operators replaced by the GRU cell operator. Order is
+  // important - DeleteArrayIfUnused() only succeeds if dependent operators
+  // have been removed first. Start at the output and work towards the input.
+  model->operators.erase(FindOperator(model, *final_output_add));
+  DeleteArrayIfUnused(candidate_activation_mul->outputs[0], model);
+  model->operators.erase(FindOperator(model, *candidate_activation_mul));
+  DeleteArrayIfUnused(candidate_activation->outputs[0], model);
+  model->operators.erase(FindOperator(model, *candidate_activation));
+  DeleteArrayIfUnused(fc_activation->outputs[0], model);
+  model->operators.erase(FindOperator(model, *fc_activation));
+  DeleteArrayIfUnused(concat_reset_input->outputs[0], model);
+  model->operators.erase(FindOperator(model, *concat_reset_input));
+  DeleteArrayIfUnused(prev_state_mul->outputs[0], model);
+  model->operators.erase(FindOperator(model, *prev_state_mul));
+  DeleteArrayIfUnused(update_gate_sub->outputs[0], model);
+  model->operators.erase(FindOperator(model, *update_gate_sub));
+  DeleteArrayIfUnused(reset_state_mul->outputs[0], model);
+  model->operators.erase(FindOperator(model, *reset_state_mul));
+  DeleteArrayIfUnused(gate_output_split->outputs[0], model);
+  DeleteArrayIfUnused(gate_output_split->outputs[1], model);
+  string dims_array = gate_output_split->inputs[0];
+  model->operators.erase(FindOperator(model, *gate_output_split));
+  DeleteArrayIfUnused(dims_array, model);
+  DeleteArrayIfUnused(gate_output->outputs[0], model);
+  model->operators.erase(FindOperator(model, *gate_output));
+  DeleteArrayIfUnused(fc_gate->outputs[0], model);
+  model->operators.erase(FindOperator(model, *fc_gate));
+  DeleteArrayIfUnused(concat_input->outputs[0], model);
+  model->operators.erase(FindOperator(model, *concat_input));
+
+  printf("model_size %d\n", model->operators.size());
+  return true;
+#else
+
+  model->operators.erase(FindOperator(model, *final_output_add));
+  return true;
+#endif
 }
 
 }
