@@ -251,11 +251,17 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
-  assert(concat_input->inputs[1] == concat_reset_input->inputs[1]); // cur input
-  assert(concat_input->inputs[0] == reset_state_mul->inputs[0]); // prev state
+  if (concat_input->inputs[0] != concat_reset_input->inputs[0]) { // cur input
+    return false;
+  }
+  if (concat_input->inputs[1] != reset_state_mul->inputs[1]) { // prev state
+    return false;
+  }
 
   printf("\n===== Found GRU cell =====\n");
 
+  // Emplace a new GRU cell operator
+  // TODO
   return false;
 }
 
