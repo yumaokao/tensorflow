@@ -52,6 +52,11 @@ void Dump(const char* filename) {
     if (const auto* array = buffer->data()) {
       size_t size = array->size();
       printf("  %2d: size %zu\n", i, size);
+      /* float weights[16];
+      uint8_t * wptr = (uint8_t*) weights;
+      memcpy(wptr, array->data(), 64);
+      printf("  [0]: %e\n", weights[0]);
+      printf("  [1]: %e\n", weights[1]); */
     } else {
       printf("  %2d: size 0\n", i);
     }
