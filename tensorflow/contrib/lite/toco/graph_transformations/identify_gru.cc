@@ -22,7 +22,7 @@ std::vector<std::unique_ptr<Operator>>::iterator FindOperator(
   return it;
 }
 
-// Similar to MatchOperatorInputs. However, op_type is considered
+// Similar to MatchOperatorInputs except that op_type is considered as
 // 'Don't care' if it is OperatorType::kNone.
 //
 // This is used for some operators that the input opreator type may change
@@ -308,13 +308,11 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
   if (concat_input->inputs[0] != concat_reset_input->inputs[0]) { // cur input
     return false;
   }
-  if ((concat_input->inputs[1] != reset_state_mul->inputs[1]) || (concat_input->inputs[1] != prev_state_mul->inputs[1])) { // prev state
+  if ((concat_input->inputs[1] != reset_state_mul->inputs[1]) || 
+      (concat_input->inputs[1] != prev_state_mul->inputs[1])) { // prev state
     return false;
   }
 
-  printf("\n===== Found GRU cell @ %p=====\n", final_output_add);
-
-#if 1
   // Emplace a new GRU cell operator
   auto* gru_cell_op = new GruCellOperator;
   gru_cell_op->inputs.resize(GruCellOperator::NUM_INPUTS);
@@ -361,13 +359,7 @@ bool IdentifyGruCell::Run(Model* model, std::size_t op_index) {
   DeleteArrayIfUnused(concat_input->outputs[0], model);
   model->operators.erase(FindOperator(model, *concat_input));
 
-  printf("model_size %d\n", model->operators.size());
   return true;
-#else
-
-  model->operators.erase(FindOperator(model, *final_output_add));
-  return true;
-#endif
 }
 
 }

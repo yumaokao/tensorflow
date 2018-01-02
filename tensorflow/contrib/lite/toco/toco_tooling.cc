@@ -254,7 +254,6 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
                             dequantization_transformations);
   }
 
-  printf("AFTER TRANSFORMATIONS\n");
   LogDump(kLogLevelModelChanged, "AFTER TRANSFORMATIONS", *model);
 
   if (output_format != GRAPHVIZ_DOT && output_format != TFLITE) {
@@ -264,10 +263,8 @@ void Transform(const TocoFlags& toco_flags, Model* model) {
   }
 
   if (SupportsPreallocatedWorkspace(output_format)) {
-    printf("error begin\n");
     AllocateTransientArrays(model, kDefaultTransientDataAlignment);
     LogDump(kLogLevelModelChanged, "AFTER ALLOCATION", *model);
-    printf("error end\n");
   }
 
   CheckModelCounts(*model);
