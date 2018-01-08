@@ -112,6 +112,12 @@ bool ParseTocoFlagsFromCommandLineFlags(
           "If true, ignore control dependency requirements in input TensorFlow "
           "GraphDef. Otherwise an error will be raised upon control dependency "
           "inputs."),
+      Flag("partial_quant", parsed_flags.partial_quant.bind(),
+           parsed_flags.partial_quant.default_value(),
+           "If true, allow TOCO to create TF Lite with inference_type set as "
+           "QUANTIZED_UINT8, TOCO will try use QUANTIZED_UINT8 if an operation "
+           "could be process as QUANTIZED_UINT8, otherwise will fall back to "
+           "FLOAT."),
   };
   bool asked_for_help =
       *argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-help"));
@@ -172,6 +178,7 @@ void ReadTocoFlagsFromCommandLineFlags(const ParsedTocoFlags& parsed_toco_flags,
   READ_TOCO_FLAG(reorder_across_fake_quant, FlagRequirement::kNone);
   READ_TOCO_FLAG(allow_custom_ops, FlagRequirement::kNone);
   READ_TOCO_FLAG(drop_control_dependency, FlagRequirement::kNone);
+  READ_TOCO_FLAG(partial_quant, FlagRequirement::kNone);
 
   // Deprecated flag handling.
   if (parsed_toco_flags.input_type.specified()) {

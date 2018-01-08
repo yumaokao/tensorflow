@@ -136,4 +136,10 @@ message TocoFlags {
   //    - Default to false if the output format is TENSORFLOW_GRAPHDEF.
   //    - Default to true in all other cases.
   optional bool drop_control_dependency = 12;
+
+  // If true, allow TOCO to create TF Lite with inference_type set as
+  // QUANTIZED_UINT8, TOCO will try use QUANTIZED_UINT8 if an operation
+  // could be process as QUANTIZED_UINT8, otherwise will fall back to
+  // FLOAT.
+  optional bool partial_quant = 14;
 }
