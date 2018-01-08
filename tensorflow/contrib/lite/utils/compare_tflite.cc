@@ -48,6 +48,24 @@ void FATAL(const char* format, ...) {
     FATAL("Aborting since tflite returned failure."); \
   }
 
+static TfLiteStatus ReshapeInputs(tflite::Interpreter* interpreter,
+                                  const char* batch_xs) {
+  cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
+  float* src_data = arr.data<float>();
+  if (!src_data)
+    return kTfLiteError;
+
+  std::vector<int> shape;
+  for (size_t s : arr.shape) {
+    shape.push_back(static_cast<int>(s));
+  }
+
+  int input = interpreter->inputs()[0];
+  interpreter->ResizeInputTensor(input, shape);
+
+  return kTfLiteOk;
+}
+
 static TfLiteStatus PrepareInputs(tflite::Interpreter* interpreter,
                                   const char* batch_xs) {
   TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
@@ -130,6 +148,11 @@ TfLiteStatus Compare(const char* filename, bool use_nnapi,
   // Allocate tensors
   printf("Use nnapi is set to: %d\n", use_nnapi);
   interpreter->UseNNAPI(use_nnapi);
+
+  // Reshape with batch
+  ReshapeInputs(interpreter.get(), batch_xs);
+
+  // Allocate Tensors
   interpreter->AllocateTensors();
 
   // Clear outputs[0]
