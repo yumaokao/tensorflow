@@ -132,11 +132,11 @@ TfLiteStatus Compare(const char* filename, bool use_nnapi,
   interpreter->UseNNAPI(use_nnapi);
   interpreter->AllocateTensors();
 
-  // Prepare inputs[0]
-  PrepareInputs(interpreter.get(), batch_xs);
-
   // Clear outputs[0]
   ClearOutputs(interpreter.get());
+
+  // Prepare inputs[0]
+  PrepareInputs(interpreter.get(), batch_xs);
 
   // Invoke = Run
   interpreter->Invoke();
