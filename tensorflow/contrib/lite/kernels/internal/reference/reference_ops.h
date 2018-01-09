@@ -1977,6 +1977,27 @@ inline void Dequantize(const uint8* input_data, const Dims<4>& input_dims,
   }
 }
 
+inline void Quantize(const float* input_data, const Dims<4>& input_dims,
+                       int32 zero_point, double scale, uint8* output_data,
+                       const Dims<4>& output_dims) {
+  const int batches = MatchingArraySize(input_dims, 3, output_dims, 3);
+  const int height = MatchingArraySize(input_dims, 2, output_dims, 2);
+  const int width = MatchingArraySize(input_dims, 1, output_dims, 1);
+  const int depth = MatchingArraySize(input_dims, 0, output_dims, 0);
+  for (int b = 0; b < batches; ++b) {
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        for (int c = 0; c < depth; ++c) {
+          float val = input_data[Offset(input_dims, c, x, y, b)];
+          val = TfLiteRound(val/scale) + zero_point;
+          uint8_t result = static_cast<uint8_t>(val);
+          output_data[Offset(output_dims, c, x, y, b)] = result;
+        }
+      }
+    }
+  }
+}
+
 inline void FakeQuant(const float* input_data, const Dims<4>& input_dims,
                       float rmin, float rmax, float* output_data,
                       const Dims<4>& output_dims) {

@@ -29,6 +29,7 @@ class BuiltinOpResolver : public OpResolver {
   TfLiteRegistration* FindOp(tflite::BuiltinOperator op) const override;
   TfLiteRegistration* FindOp(const char* op) const override;
   void AddBuiltin(tflite::BuiltinOperator op, TfLiteRegistration* registration);
+  void AddCustom(const char* name, TfLiteRegistration* registration, int op_code);
   void AddCustom(const char* name, TfLiteRegistration* registration);
 
  private:

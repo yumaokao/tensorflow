@@ -102,6 +102,8 @@ cc_library(
         "space_to_depth.cc",
         "svdf.cc",
         "unidirectional_sequence_rnn.cc",
+	"dequantize.cc",
+	"quantize.cc",
     ],
     hdrs = [
         "kernel_util.h",
