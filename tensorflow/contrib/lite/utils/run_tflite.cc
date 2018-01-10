@@ -48,125 +48,7 @@ void FATAL(const char* format, ...) {
     FATAL("Aborting since tflite returned failure."); \
   }
 
-#if 0
-static TfLiteStatus ReshapeInputs(tflite::Interpreter* interpreter,
-                                  const char* batch_xs) {
-  cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
-  printf(" ReshapeInputs word_size=%zu\n", arr.word_size);
-  float* src_data = arr.data<float>();
-  if (!src_data)
-    return kTfLiteError;
-
-  std::vector<int> shape;
-  for (size_t s : arr.shape) {
-    shape.push_back(static_cast<int>(s));
-  }
-
-  int input = interpreter->inputs()[0];
-  interpreter->ResizeInputTensor(input, shape);
-
-  return kTfLiteOk;
-}
-
-static TfLiteStatus PrepareInputs(tflite::Interpreter* interpreter,
-                                  const char* batch_xs) {
-  TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
-  cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
-  float* dst_data = interpreter->typed_tensor<float>(interpreter->inputs()[0]);
-  float* src_data = arr.data<float>();
-  if (!dst_data || !src_data)
-    return kTfLiteError;
-
-  size_t num = tensor->bytes / sizeof(float);
-  float* p = dst_data;
-  float* q = src_data;
-  for (p = dst_data, q = src_data; p < dst_data + num; p++, q++) {
-    *p = *q;
-  }
-  return kTfLiteOk;
-}
-
-static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter) {
-  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-  float* data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
-  if (!data)
-    return kTfLiteError;
-  if (data) {
-    size_t num = tensor->bytes / sizeof(float);
-    for (float* p = data; p < data + num; p++) {
-      *p = 0;
-    }
-  }
-  return kTfLiteOk;
-}
-
-static TfLiteStatus SaveOutputs(tflite::Interpreter* interpreter,
-                                   const char* batch_ys) {
-  TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-  float* out_data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
-  if (!out_data)
-    return kTfLiteError;
-
-  TfLiteStatus result = kTfLiteOk;
-  // get output shape
-  std::vector<size_t> npyshape;
-  // printf(" shape len=%d\n", tensor->dims->size);
-  for (int i = 0; i < tensor->dims->size; i++) {
-    npyshape.push_back(tensor->dims->data[i]);
-    // printf(" %d\n", tensor->dims->data[i]);
-  }
-
-  std::vector<float> npydata;
-  size_t num = tensor->bytes / sizeof(float);
-  // printf(" num %zu\n", num);
-  for (size_t idx = 0; idx < num; idx++) {
-    npydata.push_back(out_data[idx]);
-  }
-
-  cnpy::npy_save(batch_ys, &npydata[0], npyshape, "w");
-  return result;
-}
-
-TfLiteStatus Run(const char* filename, bool use_nnapi,
-         const char* batch_xs, const char* batch_ys) {
-  // Read tflite
-  auto model = tflite::FlatBufferModel::BuildFromFile(filename);
-  if (!model) FATAL("Cannot read file %s\n", filename);
-
-  // Build interpreter
-  std::unique_ptr<tflite::Interpreter> interpreter;
-  tflite::ops::builtin::BuiltinOpResolver builtins;
-  CHECK_TFLITE_SUCCESS(
-      tflite::InterpreterBuilder(*model, builtins)(&interpreter));
-
-  // Allocate tensors
-  printf("Use nnapi is set to: %d\n", use_nnapi);
-  interpreter->UseNNAPI(use_nnapi);
-
-  // Reshape with batch
-  ReshapeInputs(interpreter.get(), batch_xs);
-
-  // Allocate Tensors
-  interpreter->AllocateTensors();
-
-  // Clear outputs[0]
-  ClearOutputs(interpreter.get());
-
-  // Prepare inputs[0]
-  PrepareInputs(interpreter.get(), batch_xs);
-
-  // Invoke = Run
-  interpreter->Invoke();
-
-  // Compare outputs
-  TfLiteStatus result = SaveOutputs(interpreter.get(), batch_ys);
-  printf("Running: %s\n", filename);
-  printf("  Result: %s\n", (result == kTfLiteOk) ? "OK" : "FAILED");
-
-  return result;
-}
-#endif
-
+template <typename T>
 class TFLiteRunner {
   public:
     TFLiteRunner(const string tflite_file, const bool use_nnapi)
@@ -184,7 +66,8 @@ class TFLiteRunner {
     TfLiteStatus SaveOutputs(const char* batch_ys);
 };
 
-TfLiteStatus TFLiteRunner::Run(const string batch_xs, const string batch_ys) {
+template <typename T>
+TfLiteStatus TFLiteRunner<T>::Run(const string batch_xs, const string batch_ys) {
   auto model = tflite::FlatBufferModel::BuildFromFile(m_tflite_file.c_str());
   tflite::ops::builtin::BuiltinOpResolver builtins;
   CHECK_TFLITE_SUCCESS(
@@ -206,11 +89,12 @@ TfLiteStatus TFLiteRunner::Run(const string batch_xs, const string batch_ys) {
   return kTfLiteOk;
 }
 
-TfLiteStatus TFLiteRunner::ReshapeInputs(const char* batch_xs) {
+template <typename T>
+TfLiteStatus TFLiteRunner<T>::ReshapeInputs(const char* batch_xs) {
   tflite::Interpreter* interpreter = m_interpreter.get();
   cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
   printf(" ReshapeInputs word_size=%zu\n", arr.word_size);
-  float* src_data = arr.data<float>();
+  T* src_data = arr.data<T>();
   if (!src_data)
     return kTfLiteError;
 
@@ -223,43 +107,46 @@ TfLiteStatus TFLiteRunner::ReshapeInputs(const char* batch_xs) {
   return kTfLiteOk;
 }
 
-TfLiteStatus TFLiteRunner::ClearOutputs() {
+template <typename T>
+TfLiteStatus TFLiteRunner<T>::ClearOutputs() {
   tflite::Interpreter* interpreter = m_interpreter.get();
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-  float* data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  T* data = interpreter->typed_tensor<T>(interpreter->outputs()[0]);
   if (!data)
     return kTfLiteError;
   if (data) {
-    size_t num = tensor->bytes / sizeof(float);
-    for (float* p = data; p < data + num; p++) {
+    size_t num = tensor->bytes / sizeof(T);
+    for (T* p = data; p < data + num; p++) {
       *p = 0;
     }
   }
   return kTfLiteOk;
 }
 
-TfLiteStatus TFLiteRunner::PrepareInputs(const char* batch_xs) {
+template <typename T>
+TfLiteStatus TFLiteRunner<T>::PrepareInputs(const char* batch_xs) {
   tflite::Interpreter* interpreter = m_interpreter.get();
   TfLiteTensor* tensor = interpreter->tensor(interpreter->inputs()[0]);
   cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
-  float* dst_data = interpreter->typed_tensor<float>(interpreter->inputs()[0]);
-  float* src_data = arr.data<float>();
+  T* dst_data = interpreter->typed_tensor<T>(interpreter->inputs()[0]);
+  T* src_data = arr.data<T>();
   if (!dst_data || !src_data)
     return kTfLiteError;
 
-  size_t num = tensor->bytes / sizeof(float);
-  float* p = dst_data;
-  float* q = src_data;
+  size_t num = tensor->bytes / sizeof(T);
+  T* p = dst_data;
+  T* q = src_data;
   for (p = dst_data, q = src_data; p < dst_data + num; p++, q++) {
     *p = *q;
   }
   return kTfLiteOk;
 }
 
-TfLiteStatus TFLiteRunner::SaveOutputs(const char* batch_ys) {
+template <typename T>
+TfLiteStatus TFLiteRunner<T>::SaveOutputs(const char* batch_ys) {
   tflite::Interpreter* interpreter = m_interpreter.get();
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
-  float* out_data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
+  T* out_data = interpreter->typed_tensor<T>(interpreter->outputs()[0]);
   if (!out_data)
     return kTfLiteError;
 
@@ -272,8 +159,8 @@ TfLiteStatus TFLiteRunner::SaveOutputs(const char* batch_ys) {
     // printf(" %d\n", tensor->dims->data[i]);
   }
 
-  std::vector<float> npydata;
-  size_t num = tensor->bytes / sizeof(float);
+  std::vector<T> npydata;
+  size_t num = tensor->bytes / sizeof(T);
   // printf(" num %zu\n", num);
   for (size_t idx = 0; idx < num; idx++) {
     npydata.push_back(out_data[idx]);
@@ -305,10 +192,8 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  TFLiteRunner runner(tflite_file, use_nnapi);
+  TFLiteRunner<float> runner(tflite_file, use_nnapi);
   TfLiteStatus result = runner.Run(batch_xs, batch_ys);
 
-  // Run(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
-
-  return 0;
+  return result;
 }
