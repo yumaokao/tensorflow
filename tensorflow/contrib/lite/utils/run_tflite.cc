@@ -48,6 +48,7 @@ void FATAL(const char* format, ...) {
     FATAL("Aborting since tflite returned failure."); \
   }
 
+#if 0
 static TfLiteStatus ReshapeInputs(tflite::Interpreter* interpreter,
                                   const char* batch_xs) {
   cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
@@ -164,6 +165,7 @@ TfLiteStatus Run(const char* filename, bool use_nnapi,
 
   return result;
 }
+#endif
 
 class TFLiteRunner {
   public:
@@ -303,10 +305,10 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // TFLiteRunner runner(tflite_file, use_nnapi);
-  // TfLiteStatus result = runner.Run(batch_xs, batch_ys);
+  TFLiteRunner runner(tflite_file, use_nnapi);
+  TfLiteStatus result = runner.Run(batch_xs, batch_ys);
 
-  Run(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
+  // Run(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str());
 
   return 0;
 }
