@@ -225,7 +225,7 @@ void MaxEvalQuantized(TfLiteContext* context, TfLiteNode* node,
                 activation_min, activation_max,                              \
                 GetTensorData<uint8_t>(output), GetTensorDims(output))
 
-  printf("input_scale: %f, output_scale: %f\n", input_scale, output_scale);
+  //printf("input_scale: %f, output_scale: %f\n", input_scale, output_scale);
   if (kernel_type == kReference) {
     TF_LITE_MAX_POOL_REQUANT(reference_ops);
   } else {

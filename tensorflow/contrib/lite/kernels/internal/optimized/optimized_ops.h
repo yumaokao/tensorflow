@@ -2430,7 +2430,7 @@ inline void MaxPoolRequantize(int left_shift, const uint8* input_data, const Dim
                     int32 output_multiplier, int output_shift,
                     int32 output_activation_min, int32 output_activation_max,
                     uint8* output_data, const Dims<4>& output_dims) {
-  int print_count = 20;
+  //int print_count = 20;
   gemmlowp::ScopedProfilingLabel label("MaxPool/8bit");
   TFLITE_DCHECK_LE(output_activation_min, output_activation_max);
   const int batches = MatchingArraySize(input_dims, 3, output_dims, 3);
@@ -2484,10 +2484,10 @@ inline void MaxPoolRequantize(int left_shift, const uint8* input_data, const Dim
           clamped_output = std::max<int32>(clamped_output, output_activation_min);
           clamped_output = std::min<int32>(clamped_output, output_activation_max);
 
-          if (a != 0 && print_count > 0) {
-            printf("* %d %d\n", a, clamped_output);
-            print_count --;
-          }
+          //if (a != 0 && print_count > 0) {
+          //  printf("* %d %d\n", a, clamped_output);
+          //  print_count --;
+          //}
           output_ptr[channel] = static_cast<uint8>(clamped_output);
         }
       }
