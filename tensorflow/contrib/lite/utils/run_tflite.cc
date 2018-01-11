@@ -124,13 +124,11 @@ TfLiteStatus TFLiteRunner<T>::ReshapeInputs(const char* batch_xs) {
 
 template <typename T>
 TfLiteStatus TFLiteRunner<T>::ClearOutputs() {
-  printf("ClearOutputs In\n");
   tflite::Interpreter* interpreter = m_interpreter.get();
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
   T* data = interpreter->typed_tensor<T>(interpreter->outputs()[0]);
   if (!data)
     return kTfLiteError;
-  printf("ClearOutputs data\n");
   if (data) {
     size_t num = tensor->bytes / sizeof(T);
     for (T* p = data; p < data + num; p++) {
