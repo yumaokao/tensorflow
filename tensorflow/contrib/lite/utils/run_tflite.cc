@@ -18,6 +18,8 @@ limitations under the License.
 #include <cstdarg>
 #include <cstdio>
 #include <iostream>
+// #define NDEBUG
+#include <cassert>
 
 #include "tensorflow/contrib/lite/builtin_op_data.h"
 #include "tensorflow/contrib/lite/interpreter.h"
@@ -28,6 +30,7 @@ limitations under the License.
 #include "tensorflow/core/util/command_line_flags.h"
 #include "cnpy.h"
 #define LOG(x) std::cerr
+
 
 using tensorflow::Flag;
 using tensorflow::string;
@@ -76,16 +79,22 @@ TfLiteStatus TFLiteRunner<T>::Run(const string batch_xs, const string batch_ys) 
 
   // Reshape with batch
   TF_LITE_ENSURE_STATUS(ReshapeInputs(batch_xs.c_str()));
+  // printf("ReshapeInputs\n");
   // Allocate Tensors
   TF_LITE_ENSURE_STATUS(m_interpreter->AllocateTensors());
+  // printf("AllocateTensors\n");
   // Clear outputs[0]
   TF_LITE_ENSURE_STATUS(ClearOutputs());
+  // printf("ClearOutputs\n");
   // Prepare inputs[0]
   TF_LITE_ENSURE_STATUS(PrepareInputs(batch_xs.c_str()));
+  // printf("PrepareInputs\n");
   // Invoke = Run
   TF_LITE_ENSURE_STATUS(m_interpreter->Invoke());
+  // printf("Invoke\n");
   // Save outputs
   TF_LITE_ENSURE_STATUS(SaveOutputs(batch_ys.c_str()));
+  // printf("SaveOutputs\n");
   return kTfLiteOk;
 }
 
@@ -93,7 +102,13 @@ template <typename T>
 TfLiteStatus TFLiteRunner<T>::ReshapeInputs(const char* batch_xs) {
   tflite::Interpreter* interpreter = m_interpreter.get();
   cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
-  printf(" ReshapeInputs word_size=%zu\n", arr.word_size);
+  // TODO(yumaokao): assert doesn't work
+  assert(arr.word_size == sizeof(T));
+  if (arr.word_size != sizeof(T)) {
+    LOG(ERROR) << "Input npy work_size " << arr.word_size << "!= "
+               << " sizeof(T) " << sizeof(T) << std::endl;
+    return kTfLiteError;
+  }
   T* src_data = arr.data<T>();
   if (!src_data)
     return kTfLiteError;
@@ -109,11 +124,13 @@ TfLiteStatus TFLiteRunner<T>::ReshapeInputs(const char* batch_xs) {
 
 template <typename T>
 TfLiteStatus TFLiteRunner<T>::ClearOutputs() {
+  printf("ClearOutputs In\n");
   tflite::Interpreter* interpreter = m_interpreter.get();
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
   T* data = interpreter->typed_tensor<T>(interpreter->outputs()[0]);
   if (!data)
     return kTfLiteError;
+  printf("ClearOutputs data\n");
   if (data) {
     size_t num = tensor->bytes / sizeof(T);
     for (T* p = data; p < data + num; p++) {
@@ -175,11 +192,13 @@ int main(int argc, char* argv[]) {
   string batch_xs = "";
   string batch_ys = "";
   bool use_nnapi = true;
+  string inference_type = "float";
   std::vector<Flag> flag_list = {
 	Flag("tflite_file", &tflite_file, "tflite filename to be invoked (Must)"),
 	Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
 	Flag("batch_ys", &batch_ys, "batch_xy npy file to be saved as outputs (Must)"),
     Flag("use_nnapi", &use_nnapi, "use nn api i.e. 0,1"),
+    Flag("inference_type", &inference_type, "inference type: float, uint8"),
   };
   string usage = tensorflow::Flags::Usage(argv[0], flag_list);
   const bool parse_result = tensorflow::Flags::Parse(&argc, argv, flag_list);
@@ -192,8 +211,16 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  TFLiteRunner<float> runner(tflite_file, use_nnapi);
-  TfLiteStatus result = runner.Run(batch_xs, batch_ys);
+  // LOG(INFO) << inference_type << std::endl;
+  // TODO(yumaokao); base class
+  TfLiteStatus result = kTfLiteError;
+  if (inference_type == "float") {
+    TFLiteRunner<float> runner(tflite_file, use_nnapi);
+    result = runner.Run(batch_xs, batch_ys);
+  } else if (inference_type == "uint8") {
+    TFLiteRunner<uint8_t> runner(tflite_file, use_nnapi);
+    result = runner.Run(batch_xs, batch_ys);
+  }
 
   return result;
 }
