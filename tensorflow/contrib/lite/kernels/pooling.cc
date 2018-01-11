@@ -23,6 +23,7 @@ limitations under the License.
 #include "tensorflow/contrib/lite/builtin_op_data.h"
 #include "tensorflow/contrib/lite/context.h"
 #include "tensorflow/contrib/lite/kernels/internal/optimized/optimized_ops.h"
+#include "tensorflow/contrib/lite/kernels/internal/quantization_util.h"
 #include "tensorflow/contrib/lite/kernels/internal/reference/reference_ops.h"
 #include "tensorflow/contrib/lite/kernels/internal/tensor.h"
 #include "tensorflow/contrib/lite/kernels/kernel_util.h"
@@ -101,9 +102,12 @@ TfLiteStatus GenericPrepare(TfLiteContext* context, TfLiteNode* node) {
 
   if (input->type == kTfLiteUInt8) {
     if (pool_type == kAverage || pool_type == kMax) {
-      TF_LITE_ENSURE_EQ(context, input->params.scale, output->params.scale);
-      TF_LITE_ENSURE_EQ(context, input->params.zero_point,
-                        output->params.zero_point);
+      //printf("=== %s pooling ===\n", (pool_type == kAverage) ? "Average" : "Max");
+      //printf("input scale: %f, input zero point: %d\n", input->params.scale, input->params.zero_point);
+      //printf("output scale: %f, output zero point: %d\n", output->params.scale, output->params.zero_point);
+      //TF_LITE_ENSURE_EQ(context, input->params.scale, output->params.scale);
+      //TF_LITE_ENSURE_EQ(context, input->params.zero_point,
+      //                  output->params.zero_point);
     }
     if (pool_type == kL2) {
       // We currently don't have a quantized implementation of L2Pool
@@ -192,6 +196,17 @@ void MaxEvalQuantized(TfLiteContext* context, TfLiteNode* node,
   int32_t activation_max;
   CalculateActivationRangeUint8(params->activation, output, &activation_min,
                                 &activation_max);
+
+  const int left_shift = 20;
+  const int input_offset = -input->params.zero_point;
+  const int output_offset = output->params.zero_point;
+  const double input_scale = input->params.scale;
+  const double output_scale = output->params.scale;
+  const double real_output_multiplier = input_scale / ((1 << left_shift) * output_scale);
+  int32 output_multiplier;
+  int output_shift;
+  QuantizeMultiplierSmallerThanOne(real_output_multiplier, &output_multiplier, &output_shift);
+
 #define TF_LITE_MAX_POOL(type)                                               \
   type::MaxPool(GetTensorData<uint8_t>(input), GetTensorDims(input),         \
                 params->stride_width, params->stride_height,                 \
@@ -199,12 +214,25 @@ void MaxEvalQuantized(TfLiteContext* context, TfLiteNode* node,
                 params->filter_width, params->filter_height, activation_min, \
                 activation_max, GetTensorData<uint8_t>(output),              \
                 GetTensorDims(output))
+
+#define TF_LITE_MAX_POOL_REQUANT(type)                                       \
+  type::MaxPoolRequantize(left_shift, GetTensorData<uint8_t>(input),         \
+                GetTensorDims(input), input_offset, output_offset,           \
+                params->stride_width, params->stride_height,                 \
+                data->padding.width, data->padding.height,                   \
+                params->filter_width, params->filter_height,                 \
+                output_multiplier, output_shift,                             \
+                activation_min, activation_max,                              \
+                GetTensorData<uint8_t>(output), GetTensorDims(output))
+
+  printf("input_scale: %f, output_scale: %f\n", input_scale, output_scale);
   if (kernel_type == kReference) {
-    TF_LITE_MAX_POOL(reference_ops);
+    TF_LITE_MAX_POOL_REQUANT(reference_ops);
   } else {
-    TF_LITE_MAX_POOL(optimized_ops);
+    TF_LITE_MAX_POOL_REQUANT(optimized_ops);
   }
 #undef TF_LITE_MAX_POOL
+#undef TF_LITE_MAX_POOL_REQUANT
 }
 
 template <KernelType kernel_type>
