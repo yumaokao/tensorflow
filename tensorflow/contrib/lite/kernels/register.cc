@@ -52,9 +52,10 @@ TfLiteRegistration* Register_RESIZE_BILINEAR();
 TfLiteRegistration* Register_SKIP_GRAM();
 TfLiteRegistration* Register_SPACE_TO_DEPTH();
 TfLiteRegistration* Register_GATHER();
+TfLiteRegistration* Register_TRANSPOSE();
+TfLiteRegistration* Register_MEAN();
 TfLiteRegistration* Register_DEQUANTIZE();
 TfLiteRegistration* Register_QUANTIZE();
-
 
 BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_RELU, Register_RELU());

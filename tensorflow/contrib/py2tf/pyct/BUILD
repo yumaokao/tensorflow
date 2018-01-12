@@ -22,9 +22,15 @@ py_library(
         "compiler.py",
         "parser.py",
         "pretty_printer.py",
+        "templates.py",
     ],
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
+    deps = [
+        "@astor_archive//:astor",
+        "@gast_archive//:gast",
+        "@termcolor_archive//:termcolor",
+    ],
 )
 
 py_test(
@@ -39,23 +45,16 @@ py_test(
 py_test(
     name = "compiler_test",
     srcs = ["compiler_test.py"],
-    tags = [
-        "manual",
-        "notap",
-    ],
     deps = [
         ":pyct",
         "//tensorflow/python:client_testlib",
+        "@gast_archive//:gast",
     ],
 )
 
 py_test(
     name = "parser_test",
     srcs = ["parser_test.py"],
-    tags = [
-        "manual",
-        "notap",
-    ],
     deps = [
         ":pyct",
         "//tensorflow/python:client_testlib",
@@ -65,12 +64,18 @@ py_test(
 py_test(
     name = "pretty_printer_test",
     srcs = ["pretty_printer_test.py"],
-    tags = [
-        "manual",
-        "notap",
-    ],
     deps = [
         ":pyct",
         "//tensorflow/python:client_testlib",
+    ],
+)
+
+py_test(
+    name = "templates_test",
+    srcs = ["templates_test.py"],
+    deps = [
+        ":pyct",
+        "//tensorflow/python:client_testlib",
+        "@gast_archive//:gast",
     ],
 )

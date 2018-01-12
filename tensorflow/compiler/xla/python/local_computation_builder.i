@@ -188,6 +188,15 @@ tensorflow::ImportNumpy();
   }
 }
 
+%typemap(out) Status {
+  if (!$1.ok()) {
+    PyErr_SetString(
+        PyExc_RuntimeError, $1.ToString().c_str());
+    return NULL;
+  }
+  $result = Py_None;
+}
+
 // ArraySlice<int64>
 
 %typemap(in) tensorflow::gtl::ArraySlice<int64>
@@ -277,13 +286,25 @@ tensorflow::ImportNumpy();
 
 // Literal
 
-%typemap(in) const Literal& (std::unique_ptr<Literal> temp) {
-  temp = numpy::XlaLiteralFromPyObject($input);
-  $1 = &*temp;
+%typemap(in) const Literal& (StatusOr< std::unique_ptr<Literal> > literal_status) {
+  literal_status = numpy::XlaLiteralFromPyObject($input);
+  if (!literal_status.ok()) {
+    PyErr_SetString(PyExc_RuntimeError, literal_status.status().ToString().c_str());
+    return NULL;
+  }
+  $1 = literal_status.ValueOrDie().get();
 }
 
 %typemap(out) std::unique_ptr<Literal> {
   $result = numpy::PyObjectFromXlaLiteral(*$1);
+}
+
+%typemap(out) StatusOr< std::unique_ptr<Literal> > {
+  if (!$1.ok()) {
+    PyErr_SetString(PyExc_RuntimeError, $1.status().ToString().c_str());
+    return NULL;
+  }
+  $result = numpy::PyObjectFromXlaLiteral(*$1.ValueOrDie());
 }
 
 %typemap(in) const std::vector<Literal>& (std::vector<Literal> temps) {
@@ -294,7 +315,13 @@ tensorflow::ImportNumpy();
   const int size = PySequence_Size($input);
   for (int i = 0; i < size; ++i) {
     PyObject* o = PySequence_GetItem($input, i);
-    temps.push_back(*numpy::XlaLiteralFromPyObject(o));
+    StatusOr< std::unique_ptr<Literal> > literal_status = numpy::XlaLiteralFromPyObject(o);
+    if (!literal_status.ok()) {
+      PyErr_SetString(PyExc_RuntimeError, literal_status.status().ToString().c_str());
+      Py_DECREF(o);
+      return NULL;
+    }
+    temps.push_back(std::move(*literal_status.ConsumeValueOrDie()));
     Py_DECREF(o);
   }
   $1 = &temps;
@@ -303,7 +330,9 @@ tensorflow::ImportNumpy();
 // Shape
 
 %typemap(in) const Shape& (Shape temp) {
-  if (!numpy::CheckPyShapeInfo($input)) {
+  Status shape_status = numpy::CheckPyShapeInfo($input);
+  if (!shape_status.ok()) {
+    PyErr_SetString(PyExc_RuntimeError, shape_status.ToString().c_str());
     return NULL;
   }
   temp = numpy::XlaShapeFromPyShapeInfo($input);
@@ -322,7 +351,9 @@ tensorflow::ImportNumpy();
   const int size = PySequence_Size($input);
   for (int i = 0; i < size; ++i) {
     PyObject* o = PySequence_GetItem($input, i);
-    if (!numpy::CheckPyShapeInfo(o)) {
+    Status shape_status = numpy::CheckPyShapeInfo(o);
+    if (!shape_status.ok()) {
+      PyErr_SetString(PyExc_RuntimeError, shape_status.ToString().c_str());
       Py_DECREF(o);
       return NULL;
     }
@@ -540,7 +571,11 @@ tensorflow::ImportNumpy();
 %ignoreall
 %unignore xla;
 %unignore xla::swig;
+%unignore xla::swig::InitializeReplicaCount;
+%unignore xla::swig::GetReplicaCount;
 %unignore xla::swig::TransferToInfeedLocal;
+%unignore xla::swig::TransferToInfeedLocalReplica;
+%unignore xla::swig::TransferFromOutfeedLocalReplica;
 %unignore xla::swig::LocalShapedBuffer;
 %unignore xla::swig::LocalShapedBuffer::FromLiteral;
 %unignore xla::swig::LocalShapedBuffer::ToLiteral;
@@ -555,6 +590,7 @@ tensorflow::ImportNumpy();
 %unignore xla::swig::LocalComputationBuilder::Parameter;
 %unignore xla::swig::LocalComputationBuilder::GetShape;
 %unignore xla::swig::LocalComputationBuilder::Infeed;
+%unignore xla::swig::LocalComputationBuilder::Outfeed;
 %unignore xla::swig::LocalComputationBuilder::ConstantLiteral;
 %unignore xla::swig::LocalComputationBuilder::ConstantR0;
 %unignore xla::swig::LocalComputationBuilder::Broadcast;

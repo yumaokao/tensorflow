@@ -988,6 +988,7 @@ struct TensorFlowSquareOperator : Operator {
 // TensorFlow equivalent: Transpose
 struct TransposeOperator : Operator {
   TransposeOperator() : Operator(OperatorType::kTranspose) {}
+  std::vector<int> perm;
 };
 
 // Element-wise subtraction operator.

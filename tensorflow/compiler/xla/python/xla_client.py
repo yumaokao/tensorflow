@@ -139,6 +139,10 @@ class Shape(object):
     self.np_dtype = np_dtype
     self._dimensions = dimensions
 
+  def __repr__(self):
+    return 'xla_client.Shape(np_dtype={!r}, dimensions={!r})'.format(
+        self.np_dtype, self._dimensions)
+
   def element_type(self):
     return DTYPE_TO_XLA_ELEMENT_TYPE[str(self.np_dtype)]
 
@@ -209,20 +213,39 @@ def require_numpy_array_layout(value):
     return np.require(value, requirements=['C', 'A'])
 
 
-def transfer_to_infeed(value):
+def transfer_to_infeed(value, replica_number=None):
   """Transfers the given value into the XLA infeed queue.
 
   XLA's infeed queue is a single queue that feeds the "XLA virtual machine" with
   a totally ordered stream of values. This is dequeued from XLA computations via
   the Infeed() operation.
 
-  TODO(leary): this currently implicitly enqueues to device ordinal 0.
-
   Args:
     value: the value that the caller would like to enqueue into the XLA infeed
       queue
+    replica_number: the replica number to infeed the value to -- if not
+      provided, then the default replica (trivially replica 0) is used.
   """
-  c_api.TransferToInfeedLocal(require_numpy_array_layout(value))
+  if replica_number is None:
+    c_api.TransferToInfeedLocal(require_numpy_array_layout(value))
+  else:
+    c_api.TransferToInfeedLocalReplica(
+        require_numpy_array_layout(value), replica_number)
+
+
+def transfer_from_outfeed(shape, replica_number=None):
+  """Transfers a literal of the given shape from replica_number's outfeed.
+
+  Args:
+    shape: The shape of the value to transfer from outfeed.
+    replica_number: The replica number ordinal to transfer the outfeed value
+      from. (Each replica has a distinct outfeed queue.)
+
+  Returns:
+    The literal value that is produced from the outfeed queue.
+  """
+  return c_api.TransferFromOutfeedLocalReplica(
+      _unwrap_shape(shape), replica_number or 0)
 
 
 class LocalComputation(object):
@@ -307,6 +330,16 @@ class ComputationBuilder(object):
       A  ComputationDataHandle message.
     """
     return _wrap_data_handle(self._client.Infeed(_unwrap_shape(shape)))
+
+  def Outfeed(self, operand):
+    """Enqueues an outfeed op onto the computation.
+
+    Outfeed operations enqueue data, using the given operand, onto the XLA
+    outfeed queue for subsequent dequeue via the client API.
+    """
+    self._client.Outfeed(
+        _unwrap_data_handle(operand), _unwrap_shape(self.GetShape(operand)),
+        ''.encode('utf-8'))
 
   def Constant(self, value):
     """Enqueues a constant op onto the computation.
@@ -832,3 +865,25 @@ def _forward_methods_to_local_builder():
 
 
 _forward_methods_to_local_builder()
+
+
+def initialize_replica_count(replica_count):
+  """Initializes the desired replica count to use on XLA service init.
+
+  Args:
+    replica_count: number of replicas that are desired for set up during XLA
+      initalization.
+
+  Raises:
+    A runtime exception if the XLA service has already been initialized.
+  """
+  c_api.InitializeReplicaCount(replica_count)
+
+
+def get_replica_count():
+  """Returns the current replica count used for the XLA service.
+
+  Note: this will return a value whether the XLA service has been initialized
+  yet or not.
+  """
+  return c_api.GetReplicaCount()

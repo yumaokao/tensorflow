@@ -239,6 +239,11 @@ bool GetNodeAttrSimple(const AttrSlice& attrs, StringPiece attr_name,
 // REQUIRES: Must not use the returned value beyond the lifetime of node_def.
 const string& GetNodeAttrString(const AttrSlice& attrs, StringPiece attr_name);
 
+// Computes the input type for a specific node input.
+// REQUIRES: ValidateOpDef(op_def).ok()
+Status InputTypeForNode(const NodeDef& node_def, const OpDef& op_def,
+                        int input_port, DataType* input_type);
+
 // Computes the input and output types for a specific node.
 // REQUIRES: ValidateOpDef(op_def).ok()
 Status InOutTypesForNode(const NodeDef& node_def, const OpDef& op_def,
@@ -259,7 +264,6 @@ Status ValidateNodeDef(const NodeDef& node_def, const OpDef& op_def);
 // space, the returned `NameRangeMap` objects borrow the input/output
 // argument names from `op_def`. The `op_def` must outlive the
 // returned `NameRangeMap` objects.
-// TODO(irving): Remove the NodeDef version; keep only the Node version.
 typedef gtl::FlatMap<StringPiece, std::pair<int, int>, hash<StringPiece>>
     NameRangeMap;
 Status NameRangesForNode(const NodeDef& node_def, const OpDef& op_def,
