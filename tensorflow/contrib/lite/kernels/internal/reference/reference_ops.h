@@ -1685,6 +1685,67 @@ inline void MaxPool(const uint8* input_data, const Dims<4>& input_dims,
   }
 }
 
+inline void MaxPoolRequantize(int left_shift, const uint8* input_data, const Dims<4>& input_dims,
+                    int input_offset, int output_offset,
+                    int stride_width, int stride_height, int pad_width,
+                    int pad_height, int filter_width, int filter_height,
+                    int32 output_multiplier, int output_shift,
+                    int32 output_activation_min, int32 output_activation_max,
+                    uint8* output_data, const Dims<4>& output_dims) {
+  TFLITE_DCHECK_LE(output_activation_min, output_activation_max);
+  TFLITE_DCHECK_GE(output_activation_min, 0);
+  TFLITE_DCHECK_LE(output_activation_max, 255);
+  const int batches = MatchingArraySize(input_dims, 3, output_dims, 3);
+  const int depth = MatchingArraySize(input_dims, 0, output_dims, 0);
+  const int input_height = ArraySize(input_dims, 2);
+  const int input_width = ArraySize(input_dims, 1);
+  const int output_height = ArraySize(output_dims, 2);
+  const int output_width = ArraySize(output_dims, 1);
+  for (int batch = 0; batch < batches; ++batch) {
+    for (int out_y = 0; out_y < output_height; ++out_y) {
+      for (int out_x = 0; out_x < output_width; ++out_x) {
+        for (int channel = 0; channel < depth; ++channel) {
+          const int in_x_origin = (out_x * stride_width) - pad_width;
+          const int in_y_origin = (out_y * stride_height) - pad_height;
+          // Compute the boundaries of the filter region clamped so as to
+          // ensure that the filter window fits in the input array.
+          const int filter_x_start = std::max(0, -in_x_origin);
+          const int filter_x_end =
+              std::min(filter_width, input_width - in_x_origin);
+          const int filter_y_start = std::max(0, -in_y_origin);
+          const int filter_y_end =
+              std::min(filter_height, input_height - in_y_origin);
+          uint8 max = 0;
+          for (int filter_y = filter_y_start; filter_y < filter_y_end;
+               ++filter_y) {
+            for (int filter_x = filter_x_start; filter_x < filter_x_end;
+                 ++filter_x) {
+              const int in_x = in_x_origin + filter_x;
+              const int in_y = in_y_origin + filter_y;
+              max = std::max(
+                  max,
+                  input_data[Offset(input_dims, channel, in_x, in_y, batch)]);
+            }
+          }
+
+          // Requantize here
+          const int32 max_val = input_offset + max;
+          const int32 shifted_max_val = max_val * (1 << left_shift);
+          const int32 output = MultiplyByQuantizedMultiplierSmallerThanOne(
+                                shifted_max_val, output_multiplier, output_shift) + output_offset;
+
+          int32 clamped_output = output;
+          clamped_output = std::max<int32>(clamped_output, output_activation_min);
+          clamped_output = std::min<int32>(clamped_output, output_activation_max);
+
+          output_data[Offset(output_dims, channel, out_x, out_y, batch)] =
+              static_cast<uint8>(clamped_output);
+        }
+      }
+    }
+  }
+}
+
 // legacy, for compatibility with old checked-in code
 template <FusedActivationFunctionType Ac>
 void MaxPool(const uint8* input_data, const Dims<4>& input_dims,
