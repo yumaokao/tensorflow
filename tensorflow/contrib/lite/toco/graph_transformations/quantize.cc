@@ -45,6 +45,7 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kSqueeze || type == OperatorType::kPad ||
          type == OperatorType::kTensorFlowReshape ||
          type == OperatorType::kMul || type == OperatorType::kSpaceToDepth ||
+         type == OperatorType::kResizeBilinear ||
          type == OperatorType::kDepthToSpace;
 }
 

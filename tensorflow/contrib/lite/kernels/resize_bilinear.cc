@@ -49,7 +49,9 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, NumDimensions(input), 4);
 
   // TODO(ahentz): Our current implementations only support float32.
-  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
+  if (output->type != kTfLiteUInt8 && output->type != kTfLiteFloat32) {
+    TF_LITE_ENSURE_EQ(context, 0, 1);
+  }
   TF_LITE_ENSURE_EQ(context, input->type, output->type);
 
   TfLiteIntArray* output_size = TfLiteIntArrayCreate(4);
