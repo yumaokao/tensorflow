@@ -82,7 +82,24 @@ void Dump(const char* filename) {
     printf(" shape [");
     for (auto s : *shape)
         printf(" %d", s);
-    printf(" ] \n");
+    printf(" ]");
+
+    const auto* quant_info = tensor->quantization();
+    if (quant_info != nullptr) {
+      if ((quant_info->min() != nullptr) && (quant_info->max() != nullptr)
+          && (quant_info->scale() != nullptr) && (quant_info->zero_point() != nullptr)) {
+        
+        printf(" minmax (%f %f) quantization (%f %ld)\n",
+            quant_info->min()->Get(0), quant_info->max()->Get(0),
+            quant_info->scale()->Get(0), quant_info->zero_point()->Get(0));
+      }
+      else {
+        printf("\n");
+      }
+    }
+    else {
+      printf("\n");
+    }
   }
 
   auto operators = subgraph->operators();
