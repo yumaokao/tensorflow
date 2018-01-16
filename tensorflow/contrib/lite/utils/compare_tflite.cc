@@ -216,9 +216,9 @@ TfLiteStatus Compare(const char* filename, bool use_nnapi,
   // Compare outputs
   TfLiteStatus result;
   if (typestr == "UINT8") {
-    CompareOutputs_UINT8(interpreter.get(), batch_ys, ignore);
+    result = CompareOutputs_UINT8(interpreter.get(), batch_ys, ignore);
   } else {
-    CompareOutputs_FLOAT(interpreter.get(), batch_ys, ignore);
+    result = CompareOutputs_FLOAT(interpreter.get(), batch_ys, ignore);
   }
   printf("Running: %s\n", filename);
   printf("  Result: %s\n", (result == kTfLiteOk) ? "OK" : "FAILED");
