@@ -101,13 +101,11 @@ TfLiteStatus GenericPrepare(TfLiteContext* context, TfLiteNode* node) {
                                        params->filter_width, outWidth);
 
   if (input->type == kTfLiteUInt8) {
-    if (pool_type == kAverage || pool_type == kMax) {
-      //printf("=== %s pooling ===\n", (pool_type == kAverage) ? "Average" : "Max");
-      //printf("input scale: %f, input zero point: %d\n", input->params.scale, input->params.zero_point);
-      //printf("output scale: %f, output zero point: %d\n", output->params.scale, output->params.zero_point);
-      //TF_LITE_ENSURE_EQ(context, input->params.scale, output->params.scale);
-      //TF_LITE_ENSURE_EQ(context, input->params.zero_point,
-      //                  output->params.zero_point);
+    if (pool_type == kAverage) {
+      // Only max pooling op supports re-quantize
+      TF_LITE_ENSURE_EQ(context, input->params.scale, output->params.scale);
+      TF_LITE_ENSURE_EQ(context, input->params.zero_point,
+                        output->params.zero_point);
     }
     if (pool_type == kL2) {
       // We currently don't have a quantized implementation of L2Pool
@@ -225,7 +223,6 @@ void MaxEvalQuantized(TfLiteContext* context, TfLiteNode* node,
                 activation_min, activation_max,                              \
                 GetTensorData<uint8_t>(output), GetTensorDims(output))
 
-  //printf("input_scale: %f, output_scale: %f\n", input_scale, output_scale);
   if (kernel_type == kReference) {
     TF_LITE_MAX_POOL_REQUANT(reference_ops);
   } else {
