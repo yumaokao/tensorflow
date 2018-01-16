@@ -103,7 +103,6 @@ static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter, T type) {
 
 static TfLiteStatus CompareOutputs_UINT8(tflite::Interpreter* interpreter,
                                    const char* batch_ys, bool ignore) {
-  constexpr int kRelativeThreshold = 255; // 1e-2f;
   constexpr int kAbsoluteThreshold = 2; // 1e-4f;
 
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
@@ -126,11 +125,8 @@ static TfLiteStatus CompareOutputs_UINT8(tflite::Interpreter* interpreter,
     int diff = std::abs((int)computed - (int)reference);
     bool error_is_large = false;
     max_diff = std::max(diff, max_diff);
-    if (std::abs(reference) < kRelativeThreshold) {
-      error_is_large = (diff > kAbsoluteThreshold);
-    } else {
-      error_is_large = (diff > kRelativeThreshold * std::abs(reference));
-    }
+
+    error_is_large = (diff >= kAbsoluteThreshold);
     if (error_is_large) {
       fprintf(stdout, "output[%d][%zu] did not match %hhu vs reference %hhu\n",
               0, idx, computed, reference);
@@ -142,7 +138,7 @@ static TfLiteStatus CompareOutputs_UINT8(tflite::Interpreter* interpreter,
       minus_cnt += 1;
     }
   }
-  printf("max diff %d, err: (%d/%d), minus: (%d/%d)\n", max_diff, err_cnt,(int)num, minus_cnt, (int)num);
+  printf("max diff: %d, err_cnt: (%d/%d), diff_1_cnt: (%d/%d)\n", max_diff, err_cnt,(int)num, minus_cnt, (int)num);
   return result;
 }
 
