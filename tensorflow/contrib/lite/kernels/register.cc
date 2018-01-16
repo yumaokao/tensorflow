@@ -95,8 +95,7 @@ BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_SPACE_TO_DEPTH, Register_SPACE_TO_DEPTH());
   AddBuiltin(BuiltinOperator_GATHER, Register_GATHER());
   AddBuiltin(BuiltinOperator_DEQUANTIZE, Register_DEQUANTIZE());
-  //TODO(yumaokao): should AddBuiltin(QUANTIZE)
-  AddCustom("FAKE_QUANT", Register_QUANTIZE(), 100);
+  AddBuiltin(BuiltinOperator_QUANTIZE, Register_QUANTIZE());
 }
 
 TfLiteRegistration* BuiltinOpResolver::FindOp(
@@ -116,12 +115,14 @@ void BuiltinOpResolver::AddBuiltin(tflite::BuiltinOperator op,
   builtins_.insert(std::make_pair(op, registration));
 }
 
-//TODO(yumaokao): should AddBuiltin(QUANTIZE)
+//TODO(yumaokao): consider remove AddCustom with op_code
+#if 0
 void BuiltinOpResolver::AddCustom(const char* name,
                                   TfLiteRegistration* registration, int op_code) {
   registration->builtin_code = op_code;
   custom_ops_.insert(std::make_pair(std::string(name), registration));
 }
+#endif
 
 void BuiltinOpResolver::AddCustom(const char* name,
                                   TfLiteRegistration* registration) {

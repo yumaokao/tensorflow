@@ -42,7 +42,7 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kL2Normalization || type == OperatorType::kAdd ||
          type == OperatorType::kAveragePool || type == OperatorType::kMaxPool ||
          type == OperatorType::kLogistic || type == OperatorType::kSoftmax ||
-         type == OperatorType::kSqueeze ||
+         type == OperatorType::kSqueeze || type == OperatorType::kPad ||
          type == OperatorType::kTensorFlowReshape ||
          type == OperatorType::kMul || type == OperatorType::kSpaceToDepth ||
          type == OperatorType::kDepthToSpace;
@@ -271,10 +271,10 @@ bool ChooseQuantizationForOperatorOutput(
     return false;
   }
   if (CountOpsWithInput(*model, output) == 1) {
-    // Check there is only one FakeQuant attach this output
+    // Check there is only one Quantize attach this output
     auto next_it = FindOpWithInput(*model, output);
     auto* next_op = next_it->get();
-    if (next_op->type == OperatorType::kFakeQuant) {
+    if (next_op->type == OperatorType::kQuantize) {
       return false;
     }
   }
@@ -473,31 +473,34 @@ bool PartialQuantizeOutputs(
         }
       }
 
-      const auto& fakequantized_output =
-          AvailableArrayName(*model, output + "_fakequantized");
-      auto& fakequantized_output_array =
-          model->GetOrCreateArray(fakequantized_output);
+      const auto& quantized_output =
+          AvailableArrayName(*model, output + "_quantized");
+      auto& quantized_output_array =
+          model->GetOrCreateArray(quantized_output);
       if (output_array.has_shape()) {
-          fakequantized_output_array.copy_shape(output_array.shape());
+          quantized_output_array.copy_shape(output_array.shape());
       }
-      fakequantized_output_array.data_type = ArrayDataType::kFloat;
-      auto& fakequantized_output_minmax =
-          fakequantized_output_array.GetOrCreateMinMax();
-      fakequantized_output_minmax.min = output_minmax.min;
-      fakequantized_output_minmax.max = output_minmax.max;
-      QuantizeArray(transformation, model, fakequantized_output,
+      quantized_output_array.data_type = ArrayDataType::kFloat;
+      auto& quantized_output_minmax =
+          quantized_output_array.GetOrCreateMinMax();
+      quantized_output_minmax.min = output_minmax.min;
+      quantized_output_minmax.max = output_minmax.max;
+      QuantizeArray(transformation, model, quantized_output,
                     quantized_data_type, quantization_params);
 
-      auto* fakequantize_op = new FakeQuantOperator;
-      fakequantize_op->minmax.reset(new MinMax);
-      MinMax& fakequantize_minmax = *fakequantize_op->minmax;
-      fakequantize_minmax.min = output_minmax.min;
-      fakequantize_minmax.max = output_minmax.max;
-      fakequantize_op->inputs = {output};
-      fakequantize_op->outputs = {fakequantized_output};
+      auto* quantize_op = new QuantizeOperator;
+      // TODO(yumaokao): add op->minmax into Quantize ?
+      //                 - no minmax in Dequantize
+      //                 - minmax in FakeQuant
+      quantize_op->minmax.reset(new MinMax);
+      MinMax& quantize_minmax = *quantize_op->minmax;
+      quantize_minmax.min = output_minmax.min;
+      quantize_minmax.max = output_minmax.max;
+      quantize_op->inputs = {output};
+      quantize_op->outputs = {quantized_output};
 
       auto* dequantize_op = new DequantizeOperator;
-      dequantize_op->inputs = {fakequantized_output};
+      dequantize_op->inputs = {quantized_output};
       dequantize_op->outputs = {dequantized_output};
       for (int i = 0; i < model->flags.output_arrays_size(); i++) {
         if (model->flags.output_arrays(i) == output) {
@@ -505,7 +508,7 @@ bool PartialQuantizeOutputs(
         }
       }
       const auto op_it = FindOp(*model, &op);
-      model->operators.emplace(op_it + 1, fakequantize_op);
+      model->operators.emplace(op_it + 1, quantize_op);
       model->operators.emplace(op_it + 2, dequantize_op);
     }
   }
@@ -534,7 +537,7 @@ bool PartialQuantize::Run(Model* model, std::size_t op_index) {
   auto& op = *model->operators[op_index];
   // LOG(INFO) << "YMK in Quantize::Run " << op_index << " type " << HelpfulOperatorTypeName(op);
   if (op.type == OperatorType::kDequantize ||
-      op.type == OperatorType::kFakeQuant) {
+      op.type == OperatorType::kQuantize) {
     return false;
   }
 

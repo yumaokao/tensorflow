@@ -413,18 +413,6 @@ struct DequantizeOperator : Operator {
   DequantizeOperator() : Operator(OperatorType::kDequantize) {}
 };
 
-// Quantize operator.
-//
-// Inputs:
-//   inputs[0]: required: the input float array
-//   inputs[1]: required: the min range
-//   inputs[2]: required: the max range
-//
-// TensorFlow equivalent: QuantizeV2
-struct QuantizeOperator : Operator {
-  QuantizeOperator() : Operator(OperatorType::kQuantize) {}
-};
-
 // Batch-normalization operator.
 //
 // We only support batch-normalization using pre-learned moments, so this is
@@ -707,6 +695,19 @@ inline bool operator==(const MinMax& m1, const MinMax& m2) {
 // TensorFlow equivalent: FakeQuantWithMinMaxVars, FakeQuantWithMinMaxArgs.
 struct FakeQuantOperator : Operator {
   FakeQuantOperator() : Operator(OperatorType::kFakeQuant) {}
+  std::unique_ptr<MinMax> minmax;
+};
+
+// Quantize operator.
+//
+// Inputs:
+//   inputs[0]: required: the input float array
+//   inputs[1]: required: the min range
+//   inputs[2]: required: the max range
+//
+// TensorFlow equivalent: QuantizeV2
+struct QuantizeOperator : Operator {
+  QuantizeOperator() : Operator(OperatorType::kQuantize) {}
   std::unique_ptr<MinMax> minmax;
 };
 
