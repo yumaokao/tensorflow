@@ -81,6 +81,37 @@ class Convolution
   }
 };
 
+class TransposeConvolution
+    : public BuiltinOperator<TransposeConvOperator, ::tflite::TransposeConvOptions,
+                             ::tflite::BuiltinOptions_TransposeConvOptions> {
+ public:
+  using BuiltinOperator::BuiltinOperator;
+
+  flatbuffers::Offset<TfLiteOptions> WriteOptions(
+      const TocoOperator& op,
+      flatbuffers::FlatBufferBuilder* builder) const override {
+    auto padding = Padding::Serialize(op.padding.type);
+    auto activation_function =
+        ActivationFunction::Serialize(op.fused_activation_function);
+    return ::tflite::CreateTransposeConvOptions(*builder, padding, op.stride_width,
+                                         op.stride_height, op.out_shape_N, op.out_shape_H,
+                                         op.out_shape_W, op.out_shape_C, activation_function);
+  }
+
+  void ReadOptions(const TfLiteOptions& options,
+                   TocoOperator* op) const override {
+    op->padding.type = Padding::Deserialize(options.padding());
+    op->stride_width = options.stride_w();
+    op->stride_height = options.stride_h();
+    op->out_shape_N = options.out_shape_N();
+    op->out_shape_H = options.out_shape_H();
+    op->out_shape_W = options.out_shape_W();
+    op->out_shape_C = options.out_shape_C();
+    op->fused_activation_function =
+        ActivationFunction::Deserialize(options.fused_activation_function());
+  }
+};
+
 class DepthwiseConvolution
     : public BuiltinOperator<DepthwiseConvOperator,
                              ::tflite::DepthwiseConv2DOptions,
@@ -743,6 +774,10 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
                                  OperatorType::kTranspose));
   ops.emplace_back(
       new Mean(::tflite::BuiltinOperator_MEAN, OperatorType::kMean));
+
+  // Add BuiltinOp
+  ops.emplace_back(
+      new TransposeConvolution(::tflite::BuiltinOperator_TRANSPOSE_CONV, OperatorType::kTransposeConv));
 
   // Custom Operators.
   ops.emplace_back(new Cast("CAST", OperatorType::kCast));

@@ -30,6 +30,9 @@ struct TensorT;
 struct Conv2DOptions;
 struct Conv2DOptionsT;
 
+struct TransposeConvOptions;
+struct TransposeConvOptionsT;
+
 struct Pool2DOptions;
 struct Pool2DOptionsT;
 
@@ -198,11 +201,12 @@ enum BuiltinOperator {
   BuiltinOperator_TRANSPOSE = 39,
   BuiltinOperator_MEAN = 40,
   BuiltinOperator_QUANTIZE = 50,
+  BuiltinOperator_TRANSPOSE_CONV = 51,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
-  BuiltinOperator_MAX = BuiltinOperator_QUANTIZE
+  BuiltinOperator_MAX = BuiltinOperator_TRANSPOSE_CONV
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[42] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[43] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -245,7 +249,8 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[42] {
       BuiltinOperator_SPACE_TO_BATCH_ND,
       BuiltinOperator_TRANSPOSE,
       BuiltinOperator_MEAN,
-      BuiltinOperator_QUANTIZE};
+      BuiltinOperator_QUANTIZE,
+      BuiltinOperator_TRANSPOSE_CONV};
   return values;
 }
 
@@ -301,6 +306,7 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "",
                                 "",
                                 "QUANTIZE",
+                                "TRANSPOSE_CONV",
                                 nullptr};
   return names;
 }
@@ -340,11 +346,12 @@ enum BuiltinOptions {
   BuiltinOptions_TransposeOptions = 26,
   BuiltinOptions_MeanOptions = 27,
   BuiltinOptions_DepthToSpaceOptions = 28,
+  BuiltinOptions_TransposeConvOptions = 29,
   BuiltinOptions_MIN = BuiltinOptions_NONE,
-  BuiltinOptions_MAX = BuiltinOptions_DepthToSpaceOptions
+  BuiltinOptions_MAX = BuiltinOptions_TransposeConvOptions
 };
 
-inline BuiltinOptions (&EnumValuesBuiltinOptions())[29] {
+inline BuiltinOptions (&EnumValuesBuiltinOptions())[30] {
   static BuiltinOptions values[] = {
       BuiltinOptions_NONE,
       BuiltinOptions_Conv2DOptions,
@@ -374,7 +381,8 @@ inline BuiltinOptions (&EnumValuesBuiltinOptions())[29] {
       BuiltinOptions_SpaceToBatchNDOptions,
       BuiltinOptions_TransposeOptions,
       BuiltinOptions_MeanOptions,
-      BuiltinOptions_DepthToSpaceOptions};
+      BuiltinOptions_DepthToSpaceOptions,
+      BuiltinOptions_TransposeConvOptions};
   return values;
 }
 
@@ -408,6 +416,7 @@ inline const char **EnumNamesBuiltinOptions() {
                                 "TransposeOptions",
                                 "MeanOptions",
                                 "DepthToSpaceOptions",
+                                "TransposeConvOptions",
                                 nullptr};
   return names;
 }
@@ -564,6 +573,11 @@ struct BuiltinOptionsTraits<MeanOptions> {
 template <>
 struct BuiltinOptionsTraits<DepthToSpaceOptions> {
   static const BuiltinOptions enum_value = BuiltinOptions_DepthToSpaceOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<TransposeConvOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_TransposeConvOptions;
 };
 
 struct BuiltinOptionsUnion {
@@ -891,6 +905,16 @@ struct BuiltinOptionsUnion {
   const DepthToSpaceOptionsT *AsDepthToSpaceOptions() const {
     return type == BuiltinOptions_DepthToSpaceOptions
                ? reinterpret_cast<const DepthToSpaceOptionsT *>(value)
+               : nullptr;
+  }
+  TransposeConvOptionsT *AsTransposeConvOptions() {
+    return type == BuiltinOptions_TransposeConvOptions
+               ? reinterpret_cast<TransposeConvOptionsT *>(value)
+               : nullptr;
+  }
+  const TransposeConvOptionsT *AsTransposeConvOptions() const {
+    return type == BuiltinOptions_TransposeConvOptions
+               ? reinterpret_cast<const TransposeConvOptionsT *>(value)
                : nullptr;
   }
 };
@@ -1329,6 +1353,143 @@ inline flatbuffers::Offset<Conv2DOptions> CreateConv2DOptions(
 
 flatbuffers::Offset<Conv2DOptions> CreateConv2DOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const Conv2DOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
+struct TransposeConvOptionsT : public flatbuffers::NativeTable {
+  typedef TransposeConvOptions TableType;
+  Padding padding;
+  int32_t stride_w;
+  int32_t stride_h;
+  int32_t out_shape_N;
+  int32_t out_shape_H;
+  int32_t out_shape_W;
+  int32_t out_shape_C;
+  ActivationFunctionType fused_activation_function;
+  TransposeConvOptionsT()
+      : padding(Padding_SAME),
+        stride_w(0),
+        stride_h(0),
+        out_shape_N(0),
+        out_shape_H(0),
+        out_shape_W(0),
+        out_shape_C(0),
+        fused_activation_function(ActivationFunctionType_NONE) {}
+};
+
+struct TransposeConvOptions FLATBUFFERS_FINAL_CLASS
+    : private flatbuffers::Table {
+  typedef TransposeConvOptionsT NativeTableType;
+  enum {
+    VT_PADDING = 4,
+    VT_STRIDE_W = 6,
+    VT_STRIDE_H = 8,
+    VT_OUT_SHAPE_N = 10,
+    VT_OUT_SHAPE_H = 12,
+    VT_OUT_SHAPE_W = 14,
+    VT_OUT_SHAPE_C = 16,
+    VT_FUSED_ACTIVATION_FUNCTION = 18
+  };
+  Padding padding() const {
+    return static_cast<Padding>(GetField<int8_t>(VT_PADDING, 0));
+  }
+  int32_t stride_w() const { return GetField<int32_t>(VT_STRIDE_W, 0); }
+  int32_t stride_h() const { return GetField<int32_t>(VT_STRIDE_H, 0); }
+  int32_t out_shape_N() const { return GetField<int32_t>(VT_OUT_SHAPE_N, 0); }
+  int32_t out_shape_H() const { return GetField<int32_t>(VT_OUT_SHAPE_H, 0); }
+  int32_t out_shape_W() const { return GetField<int32_t>(VT_OUT_SHAPE_W, 0); }
+  int32_t out_shape_C() const { return GetField<int32_t>(VT_OUT_SHAPE_C, 0); }
+  ActivationFunctionType fused_activation_function() const {
+    return static_cast<ActivationFunctionType>(
+        GetField<int8_t>(VT_FUSED_ACTIVATION_FUNCTION, 0));
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_PADDING) &&
+           VerifyField<int32_t>(verifier, VT_STRIDE_W) &&
+           VerifyField<int32_t>(verifier, VT_STRIDE_H) &&
+           VerifyField<int32_t>(verifier, VT_OUT_SHAPE_N) &&
+           VerifyField<int32_t>(verifier, VT_OUT_SHAPE_H) &&
+           VerifyField<int32_t>(verifier, VT_OUT_SHAPE_W) &&
+           VerifyField<int32_t>(verifier, VT_OUT_SHAPE_C) &&
+           VerifyField<int8_t>(verifier, VT_FUSED_ACTIVATION_FUNCTION) &&
+           verifier.EndTable();
+  }
+  TransposeConvOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      TransposeConvOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<TransposeConvOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const TransposeConvOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct TransposeConvOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_padding(Padding padding) {
+    fbb_.AddElement<int8_t>(TransposeConvOptions::VT_PADDING,
+                            static_cast<int8_t>(padding), 0);
+  }
+  void add_stride_w(int32_t stride_w) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_STRIDE_W, stride_w, 0);
+  }
+  void add_stride_h(int32_t stride_h) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_STRIDE_H, stride_h, 0);
+  }
+  void add_out_shape_N(int32_t out_shape_N) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_OUT_SHAPE_N, out_shape_N,
+                             0);
+  }
+  void add_out_shape_H(int32_t out_shape_H) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_OUT_SHAPE_H, out_shape_H,
+                             0);
+  }
+  void add_out_shape_W(int32_t out_shape_W) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_OUT_SHAPE_W, out_shape_W,
+                             0);
+  }
+  void add_out_shape_C(int32_t out_shape_C) {
+    fbb_.AddElement<int32_t>(TransposeConvOptions::VT_OUT_SHAPE_C, out_shape_C,
+                             0);
+  }
+  void add_fused_activation_function(
+      ActivationFunctionType fused_activation_function) {
+    fbb_.AddElement<int8_t>(TransposeConvOptions::VT_FUSED_ACTIVATION_FUNCTION,
+                            static_cast<int8_t>(fused_activation_function), 0);
+  }
+  explicit TransposeConvOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  TransposeConvOptionsBuilder &operator=(const TransposeConvOptionsBuilder &);
+  flatbuffers::Offset<TransposeConvOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<TransposeConvOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, Padding padding = Padding_SAME,
+    int32_t stride_w = 0, int32_t stride_h = 0, int32_t out_shape_N = 0,
+    int32_t out_shape_H = 0, int32_t out_shape_W = 0, int32_t out_shape_C = 0,
+    ActivationFunctionType fused_activation_function =
+        ActivationFunctionType_NONE) {
+  TransposeConvOptionsBuilder builder_(_fbb);
+  builder_.add_out_shape_C(out_shape_C);
+  builder_.add_out_shape_W(out_shape_W);
+  builder_.add_out_shape_H(out_shape_H);
+  builder_.add_out_shape_N(out_shape_N);
+  builder_.add_stride_h(stride_h);
+  builder_.add_stride_w(stride_w);
+  builder_.add_fused_activation_function(fused_activation_function);
+  builder_.add_padding(padding);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const TransposeConvOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
 struct Pool2DOptionsT : public flatbuffers::NativeTable {
@@ -3540,6 +3701,11 @@ struct Operator FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
                ? static_cast<const DepthToSpaceOptions *>(builtin_options())
                : nullptr;
   }
+  const TransposeConvOptions *builtin_options_as_TransposeConvOptions() const {
+    return builtin_options_type() == BuiltinOptions_TransposeConvOptions
+               ? static_cast<const TransposeConvOptions *>(builtin_options())
+               : nullptr;
+  }
   const flatbuffers::Vector<uint8_t> *custom_options() const {
     return GetPointer<const flatbuffers::Vector<uint8_t> *>(VT_CUSTOM_OPTIONS);
   }
@@ -3729,6 +3895,12 @@ template <>
 inline const DepthToSpaceOptions *
 Operator::builtin_options_as<DepthToSpaceOptions>() const {
   return builtin_options_as_DepthToSpaceOptions();
+}
+
+template <>
+inline const TransposeConvOptions *
+Operator::builtin_options_as<TransposeConvOptions>() const {
+  return builtin_options_as_TransposeConvOptions();
 }
 
 struct OperatorBuilder {
@@ -4337,6 +4509,82 @@ inline flatbuffers::Offset<Conv2DOptions> CreateConv2DOptions(
   auto _fused_activation_function = _o->fused_activation_function;
   return tflite::CreateConv2DOptions(_fbb, _padding, _stride_w, _stride_h,
                                      _fused_activation_function);
+}
+
+inline TransposeConvOptionsT *TransposeConvOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new TransposeConvOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void TransposeConvOptions::UnPackTo(
+    TransposeConvOptionsT *_o,
+    const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = padding();
+    _o->padding = _e;
+  };
+  {
+    auto _e = stride_w();
+    _o->stride_w = _e;
+  };
+  {
+    auto _e = stride_h();
+    _o->stride_h = _e;
+  };
+  {
+    auto _e = out_shape_N();
+    _o->out_shape_N = _e;
+  };
+  {
+    auto _e = out_shape_H();
+    _o->out_shape_H = _e;
+  };
+  {
+    auto _e = out_shape_W();
+    _o->out_shape_W = _e;
+  };
+  {
+    auto _e = out_shape_C();
+    _o->out_shape_C = _e;
+  };
+  {
+    auto _e = fused_activation_function();
+    _o->fused_activation_function = _e;
+  };
+}
+
+inline flatbuffers::Offset<TransposeConvOptions> TransposeConvOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const TransposeConvOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateTransposeConvOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const TransposeConvOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const TransposeConvOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _padding = _o->padding;
+  auto _stride_w = _o->stride_w;
+  auto _stride_h = _o->stride_h;
+  auto _out_shape_N = _o->out_shape_N;
+  auto _out_shape_H = _o->out_shape_H;
+  auto _out_shape_W = _o->out_shape_W;
+  auto _out_shape_C = _o->out_shape_C;
+  auto _fused_activation_function = _o->fused_activation_function;
+  return tflite::CreateTransposeConvOptions(
+      _fbb, _padding, _stride_w, _stride_h, _out_shape_N, _out_shape_H,
+      _out_shape_W, _out_shape_C, _fused_activation_function);
 }
 
 inline Pool2DOptionsT *Pool2DOptions::UnPack(
@@ -6121,6 +6369,10 @@ inline bool VerifyBuiltinOptions(flatbuffers::Verifier &verifier,
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return verifier.VerifyTable(ptr);
     }
+    case BuiltinOptions_TransposeConvOptions: {
+      auto ptr = reinterpret_cast<const TransposeConvOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
     default:
       return false;
   }
@@ -6257,6 +6509,10 @@ inline void *BuiltinOptionsUnion::UnPack(
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return ptr->UnPack(resolver);
     }
+    case BuiltinOptions_TransposeConvOptions: {
+      auto ptr = reinterpret_cast<const TransposeConvOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
     default:
       return nullptr;
   }
@@ -6379,6 +6635,10 @@ inline flatbuffers::Offset<void> BuiltinOptionsUnion::Pack(
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptionsT *>(value);
       return CreateDepthToSpaceOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_TransposeConvOptions: {
+      auto ptr = reinterpret_cast<const TransposeConvOptionsT *>(value);
+      return CreateTransposeConvOptions(_fbb, ptr, _rehasher).Union();
     }
     default:
       return 0;
@@ -6515,6 +6775,11 @@ inline BuiltinOptionsUnion::BuiltinOptionsUnion(const BuiltinOptionsUnion &u)
     case BuiltinOptions_DepthToSpaceOptions: {
       value = new DepthToSpaceOptionsT(
           *reinterpret_cast<DepthToSpaceOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_TransposeConvOptions: {
+      value = new TransposeConvOptionsT(
+          *reinterpret_cast<TransposeConvOptionsT *>(u.value));
       break;
     }
     default:
@@ -6661,6 +6926,11 @@ inline void BuiltinOptionsUnion::Reset() {
     }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<DepthToSpaceOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_TransposeConvOptions: {
+      auto ptr = reinterpret_cast<TransposeConvOptionsT *>(value);
       delete ptr;
       break;
     }
