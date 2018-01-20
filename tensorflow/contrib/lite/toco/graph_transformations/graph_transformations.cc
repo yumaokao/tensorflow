@@ -132,7 +132,6 @@ void DiscardUselessConnectedComponentsAndRNNBackEdges(Model* model) {
   }
 }
 
-//#define MTK_DEBUG
 bool GraphTransformationsPass(int increment, Model* model,
                               const GraphTransformationsSet& transformations) {
   CHECK(increment == 1 || increment == -1);
@@ -143,40 +142,33 @@ bool GraphTransformationsPass(int increment, Model* model,
   int op_index = increment == 1 ? 0 : model->operators.size() - 1;
   while (true) {
     bool changed_now = false;
-#ifdef MTK_DEBUG
-    printf("=====\n");
-    for (const auto& op : model->operators)
-      printf("%d ", op->type);
-    printf("\n=====\n");
-#endif
     // Loop over all transformations at the current position in the graph.
     for (const auto& transformation : transformations) {
       CHECK(!changed_now);
       CHECK(transformation->Messages().empty());
-#ifdef MTK_DEBUG
-        printf("before %s\n", transformation->Name());
-#endif
       changed_now = transformation->Run(model, op_index);
-#ifdef MTK_DEBUG
-        printf("after %s\n", transformation->Name());
-#endif
-      if (changed_now) {
-        DumpGraphvizVideoFrame(*model);
-        CHECK(!model->operators.empty());
-        op_index = std::min<int>(op_index, model->operators.size() - 1);
-        // Uncomment for debugging
-        // CheckInvariants(*model);
-      }
       const char* made_a_change_msg =
           changed_now ? "made a change" : "did NOT make a change";
       const int log_level =
           changed_now ? kLogLevelModelChanged : kLogLevelModelUnchanged;
+      if (transformation->Messages().empty()) {
+        VLOG(log_level) << transformation->Name() << " " << made_a_change_msg
+                        << " at op_index=" << op_index << "/"
+                        << model->operators.size() - 1;
+      }
       for (const string& message : transformation->Messages()) {
         VLOG(log_level) << transformation->Name() << " " << made_a_change_msg
                         << " at op_index=" << op_index << "/"
                         << model->operators.size() - 1 << ": " << message;
       }
       transformation->ClearMessages();
+      if (changed_now) {
+        DumpGraphvizVideoFrame(*model);
+        if (model->operators.empty()) return true;
+        op_index = std::min<int>(op_index, model->operators.size() - 1);
+        // Uncomment for debugging
+        // CheckInvariants(*model);
+      }
       if (changed_now) {
         break;
       }

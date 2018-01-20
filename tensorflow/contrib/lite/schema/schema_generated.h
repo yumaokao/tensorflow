@@ -48,6 +48,9 @@ struct SVDFOptionsT;
 struct RNNOptions;
 struct RNNOptionsT;
 
+struct SequenceRNNOptions;
+struct SequenceRNNOptionsT;
+
 struct FullyConnectedOptions;
 struct FullyConnectedOptionsT;
 
@@ -96,6 +99,12 @@ struct SkipGramOptionsT;
 struct SpaceToDepthOptions;
 struct SpaceToDepthOptionsT;
 
+struct SubOptions;
+struct SubOptionsT;
+
+struct DivOptions;
+struct DivOptionsT;
+
 struct DepthToSpaceOptions;
 struct DepthToSpaceOptionsT;
 
@@ -110,6 +119,9 @@ struct TransposeOptionsT;
 
 struct MeanOptions;
 struct MeanOptionsT;
+
+struct SqueezeOptions;
+struct SqueezeOptionsT;
 
 struct OperatorCode;
 struct OperatorCodeT;
@@ -176,7 +188,7 @@ enum BuiltinOperator {
   BuiltinOperator_MAX_POOL_2D = 17,
   BuiltinOperator_MUL = 18,
   BuiltinOperator_RELU = 19,
-  BuiltinOperator_RELU1 = 20,
+  BuiltinOperator_RELU_N1_TO_1 = 20,
   BuiltinOperator_RELU6 = 21,
   BuiltinOperator_RESHAPE = 22,
   BuiltinOperator_RESIZE_BILINEAR = 23,
@@ -197,12 +209,15 @@ enum BuiltinOperator {
   BuiltinOperator_SPACE_TO_BATCH_ND = 38,
   BuiltinOperator_TRANSPOSE = 39,
   BuiltinOperator_MEAN = 40,
+  BuiltinOperator_SUB = 41,
+  BuiltinOperator_DIV = 42,
+  BuiltinOperator_SQUEEZE = 43,
   BuiltinOperator_QUANTIZE = 50,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
   BuiltinOperator_MAX = BuiltinOperator_QUANTIZE
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[42] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[45] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -224,7 +239,7 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[42] {
       BuiltinOperator_MAX_POOL_2D,
       BuiltinOperator_MUL,
       BuiltinOperator_RELU,
-      BuiltinOperator_RELU1,
+      BuiltinOperator_RELU_N1_TO_1,
       BuiltinOperator_RELU6,
       BuiltinOperator_RESHAPE,
       BuiltinOperator_RESIZE_BILINEAR,
@@ -245,6 +260,9 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[42] {
       BuiltinOperator_SPACE_TO_BATCH_ND,
       BuiltinOperator_TRANSPOSE,
       BuiltinOperator_MEAN,
+      BuiltinOperator_SUB,
+      BuiltinOperator_DIV,
+      BuiltinOperator_SQUEEZE,
       BuiltinOperator_QUANTIZE};
   return values;
 }
@@ -270,7 +288,7 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "MAX_POOL_2D",
                                 "MUL",
                                 "RELU",
-                                "RELU1",
+                                "RELU_N1_TO_1",
                                 "RELU6",
                                 "RESHAPE",
                                 "RESIZE_BILINEAR",
@@ -291,9 +309,9 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "SPACE_TO_BATCH_ND",
                                 "TRANSPOSE",
                                 "MEAN",
-                                "",
-                                "",
-                                "",
+                                "SUB",
+                                "DIV",
+                                "SQUEEZE",
                                 "",
                                 "",
                                 "",
@@ -339,12 +357,16 @@ enum BuiltinOptions {
   BuiltinOptions_SpaceToBatchNDOptions = 25,
   BuiltinOptions_TransposeOptions = 26,
   BuiltinOptions_MeanOptions = 27,
-  BuiltinOptions_DepthToSpaceOptions = 28,
+  BuiltinOptions_SubOptions = 28,
+  BuiltinOptions_DivOptions = 29,
+  BuiltinOptions_SqueezeOptions = 30,
+  BuiltinOptions_SequenceRNNOptions = 31,
+  BuiltinOptions_DepthToSpaceOptions = 32,
   BuiltinOptions_MIN = BuiltinOptions_NONE,
   BuiltinOptions_MAX = BuiltinOptions_DepthToSpaceOptions
 };
 
-inline BuiltinOptions (&EnumValuesBuiltinOptions())[29] {
+inline BuiltinOptions (&EnumValuesBuiltinOptions())[33] {
   static BuiltinOptions values[] = {
       BuiltinOptions_NONE,
       BuiltinOptions_Conv2DOptions,
@@ -374,6 +396,10 @@ inline BuiltinOptions (&EnumValuesBuiltinOptions())[29] {
       BuiltinOptions_SpaceToBatchNDOptions,
       BuiltinOptions_TransposeOptions,
       BuiltinOptions_MeanOptions,
+      BuiltinOptions_SubOptions,
+      BuiltinOptions_DivOptions,
+      BuiltinOptions_SqueezeOptions,
+      BuiltinOptions_SequenceRNNOptions,
       BuiltinOptions_DepthToSpaceOptions};
   return values;
 }
@@ -407,6 +433,10 @@ inline const char **EnumNamesBuiltinOptions() {
                                 "SpaceToBatchNDOptions",
                                 "TransposeOptions",
                                 "MeanOptions",
+                                "SubOptions",
+                                "DivOptions",
+                                "SqueezeOptions",
+                                "SequenceRNNOptions",
                                 "DepthToSpaceOptions",
                                 nullptr};
   return names;
@@ -559,6 +589,26 @@ struct BuiltinOptionsTraits<TransposeOptions> {
 template <>
 struct BuiltinOptionsTraits<MeanOptions> {
   static const BuiltinOptions enum_value = BuiltinOptions_MeanOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<SubOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_SubOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<DivOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_DivOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<SqueezeOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_SqueezeOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<SequenceRNNOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_SequenceRNNOptions;
 };
 
 template <>
@@ -883,6 +933,46 @@ struct BuiltinOptionsUnion {
                ? reinterpret_cast<const MeanOptionsT *>(value)
                : nullptr;
   }
+  SubOptionsT *AsSubOptions() {
+    return type == BuiltinOptions_SubOptions
+               ? reinterpret_cast<SubOptionsT *>(value)
+               : nullptr;
+  }
+  const SubOptionsT *AsSubOptions() const {
+    return type == BuiltinOptions_SubOptions
+               ? reinterpret_cast<const SubOptionsT *>(value)
+               : nullptr;
+  }
+  DivOptionsT *AsDivOptions() {
+    return type == BuiltinOptions_DivOptions
+               ? reinterpret_cast<DivOptionsT *>(value)
+               : nullptr;
+  }
+  const DivOptionsT *AsDivOptions() const {
+    return type == BuiltinOptions_DivOptions
+               ? reinterpret_cast<const DivOptionsT *>(value)
+               : nullptr;
+  }
+  SqueezeOptionsT *AsSqueezeOptions() {
+    return type == BuiltinOptions_SqueezeOptions
+               ? reinterpret_cast<SqueezeOptionsT *>(value)
+               : nullptr;
+  }
+  const SqueezeOptionsT *AsSqueezeOptions() const {
+    return type == BuiltinOptions_SqueezeOptions
+               ? reinterpret_cast<const SqueezeOptionsT *>(value)
+               : nullptr;
+  }
+  SequenceRNNOptionsT *AsSequenceRNNOptions() {
+    return type == BuiltinOptions_SequenceRNNOptions
+               ? reinterpret_cast<SequenceRNNOptionsT *>(value)
+               : nullptr;
+  }
+  const SequenceRNNOptionsT *AsSequenceRNNOptions() const {
+    return type == BuiltinOptions_SequenceRNNOptions
+               ? reinterpret_cast<const SequenceRNNOptionsT *>(value)
+               : nullptr;
+  }
   DepthToSpaceOptionsT *AsDepthToSpaceOptions() {
     return type == BuiltinOptions_DepthToSpaceOptions
                ? reinterpret_cast<DepthToSpaceOptionsT *>(value)
@@ -927,7 +1017,7 @@ inline const char *EnumNamePadding(Padding e) {
 enum ActivationFunctionType {
   ActivationFunctionType_NONE = 0,
   ActivationFunctionType_RELU = 1,
-  ActivationFunctionType_RELU1 = 2,
+  ActivationFunctionType_RELU_N1_TO_1 = 2,
   ActivationFunctionType_RELU6 = 3,
   ActivationFunctionType_TANH = 4,
   ActivationFunctionType_SIGN_BIT = 5,
@@ -937,14 +1027,14 @@ enum ActivationFunctionType {
 
 inline ActivationFunctionType (&EnumValuesActivationFunctionType())[6] {
   static ActivationFunctionType values[] = {
-      ActivationFunctionType_NONE,  ActivationFunctionType_RELU,
-      ActivationFunctionType_RELU1, ActivationFunctionType_RELU6,
-      ActivationFunctionType_TANH,  ActivationFunctionType_SIGN_BIT};
+      ActivationFunctionType_NONE,         ActivationFunctionType_RELU,
+      ActivationFunctionType_RELU_N1_TO_1, ActivationFunctionType_RELU6,
+      ActivationFunctionType_TANH,         ActivationFunctionType_SIGN_BIT};
   return values;
 }
 
 inline const char **EnumNamesActivationFunctionType() {
-  static const char *names[] = {"NONE", "RELU",     "RELU1", "RELU6",
+  static const char *names[] = {"NONE", "RELU",     "RELU_N1_TO_1", "RELU6",
                                 "TANH", "SIGN_BIT", nullptr};
   return names;
 }
@@ -1851,6 +1941,77 @@ inline flatbuffers::Offset<RNNOptions> CreateRNNOptions(
 
 flatbuffers::Offset<RNNOptions> CreateRNNOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const RNNOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
+struct SequenceRNNOptionsT : public flatbuffers::NativeTable {
+  typedef SequenceRNNOptions TableType;
+  bool time_major;
+  ActivationFunctionType fused_activation_function;
+  SequenceRNNOptionsT()
+      : time_major(false),
+        fused_activation_function(ActivationFunctionType_NONE) {}
+};
+
+struct SequenceRNNOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef SequenceRNNOptionsT NativeTableType;
+  enum { VT_TIME_MAJOR = 4, VT_FUSED_ACTIVATION_FUNCTION = 6 };
+  bool time_major() const { return GetField<uint8_t>(VT_TIME_MAJOR, 0) != 0; }
+  ActivationFunctionType fused_activation_function() const {
+    return static_cast<ActivationFunctionType>(
+        GetField<int8_t>(VT_FUSED_ACTIVATION_FUNCTION, 0));
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_TIME_MAJOR) &&
+           VerifyField<int8_t>(verifier, VT_FUSED_ACTIVATION_FUNCTION) &&
+           verifier.EndTable();
+  }
+  SequenceRNNOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      SequenceRNNOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<SequenceRNNOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const SequenceRNNOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct SequenceRNNOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_time_major(bool time_major) {
+    fbb_.AddElement<uint8_t>(SequenceRNNOptions::VT_TIME_MAJOR,
+                             static_cast<uint8_t>(time_major), 0);
+  }
+  void add_fused_activation_function(
+      ActivationFunctionType fused_activation_function) {
+    fbb_.AddElement<int8_t>(SequenceRNNOptions::VT_FUSED_ACTIVATION_FUNCTION,
+                            static_cast<int8_t>(fused_activation_function), 0);
+  }
+  explicit SequenceRNNOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  SequenceRNNOptionsBuilder &operator=(const SequenceRNNOptionsBuilder &);
+  flatbuffers::Offset<SequenceRNNOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<SequenceRNNOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<SequenceRNNOptions> CreateSequenceRNNOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, bool time_major = false,
+    ActivationFunctionType fused_activation_function =
+        ActivationFunctionType_NONE) {
+  SequenceRNNOptionsBuilder builder_(_fbb);
+  builder_.add_fused_activation_function(fused_activation_function);
+  builder_.add_time_major(time_major);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<SequenceRNNOptions> CreateSequenceRNNOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SequenceRNNOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
 struct FullyConnectedOptionsT : public flatbuffers::NativeTable {
@@ -2966,6 +3127,128 @@ flatbuffers::Offset<SpaceToDepthOptions> CreateSpaceToDepthOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const SpaceToDepthOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
+struct SubOptionsT : public flatbuffers::NativeTable {
+  typedef SubOptions TableType;
+  ActivationFunctionType fused_activation_function;
+  SubOptionsT() : fused_activation_function(ActivationFunctionType_NONE) {}
+};
+
+struct SubOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef SubOptionsT NativeTableType;
+  enum { VT_FUSED_ACTIVATION_FUNCTION = 4 };
+  ActivationFunctionType fused_activation_function() const {
+    return static_cast<ActivationFunctionType>(
+        GetField<int8_t>(VT_FUSED_ACTIVATION_FUNCTION, 0));
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_FUSED_ACTIVATION_FUNCTION) &&
+           verifier.EndTable();
+  }
+  SubOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      SubOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<SubOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const SubOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct SubOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_fused_activation_function(
+      ActivationFunctionType fused_activation_function) {
+    fbb_.AddElement<int8_t>(SubOptions::VT_FUSED_ACTIVATION_FUNCTION,
+                            static_cast<int8_t>(fused_activation_function), 0);
+  }
+  explicit SubOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  SubOptionsBuilder &operator=(const SubOptionsBuilder &);
+  flatbuffers::Offset<SubOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<SubOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<SubOptions> CreateSubOptions(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    ActivationFunctionType fused_activation_function =
+        ActivationFunctionType_NONE) {
+  SubOptionsBuilder builder_(_fbb);
+  builder_.add_fused_activation_function(fused_activation_function);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<SubOptions> CreateSubOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SubOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
+struct DivOptionsT : public flatbuffers::NativeTable {
+  typedef DivOptions TableType;
+  ActivationFunctionType fused_activation_function;
+  DivOptionsT() : fused_activation_function(ActivationFunctionType_NONE) {}
+};
+
+struct DivOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef DivOptionsT NativeTableType;
+  enum { VT_FUSED_ACTIVATION_FUNCTION = 4 };
+  ActivationFunctionType fused_activation_function() const {
+    return static_cast<ActivationFunctionType>(
+        GetField<int8_t>(VT_FUSED_ACTIVATION_FUNCTION, 0));
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_FUSED_ACTIVATION_FUNCTION) &&
+           verifier.EndTable();
+  }
+  DivOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      DivOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<DivOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const DivOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct DivOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_fused_activation_function(
+      ActivationFunctionType fused_activation_function) {
+    fbb_.AddElement<int8_t>(DivOptions::VT_FUSED_ACTIVATION_FUNCTION,
+                            static_cast<int8_t>(fused_activation_function), 0);
+  }
+  explicit DivOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  DivOptionsBuilder &operator=(const DivOptionsBuilder &);
+  flatbuffers::Offset<DivOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<DivOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<DivOptions> CreateDivOptions(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    ActivationFunctionType fused_activation_function =
+        ActivationFunctionType_NONE) {
+  DivOptionsBuilder builder_(_fbb);
+  builder_.add_fused_activation_function(fused_activation_function);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<DivOptions> CreateDivOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const DivOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
 struct DepthToSpaceOptionsT : public flatbuffers::NativeTable {
   typedef DepthToSpaceOptions TableType;
   int32_t block_size;
@@ -3271,6 +3554,71 @@ flatbuffers::Offset<MeanOptions> CreateMeanOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const MeanOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
+struct SqueezeOptionsT : public flatbuffers::NativeTable {
+  typedef SqueezeOptions TableType;
+  std::vector<int32_t> squeeze_dims;
+  SqueezeOptionsT() {}
+};
+
+struct SqueezeOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef SqueezeOptionsT NativeTableType;
+  enum { VT_SQUEEZE_DIMS = 4 };
+  const flatbuffers::Vector<int32_t> *squeeze_dims() const {
+    return GetPointer<const flatbuffers::Vector<int32_t> *>(VT_SQUEEZE_DIMS);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_SQUEEZE_DIMS) &&
+           verifier.Verify(squeeze_dims()) && verifier.EndTable();
+  }
+  SqueezeOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      SqueezeOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<SqueezeOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const SqueezeOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct SqueezeOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_squeeze_dims(
+      flatbuffers::Offset<flatbuffers::Vector<int32_t>> squeeze_dims) {
+    fbb_.AddOffset(SqueezeOptions::VT_SQUEEZE_DIMS, squeeze_dims);
+  }
+  explicit SqueezeOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  SqueezeOptionsBuilder &operator=(const SqueezeOptionsBuilder &);
+  flatbuffers::Offset<SqueezeOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<SqueezeOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptions(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    flatbuffers::Offset<flatbuffers::Vector<int32_t>> squeeze_dims = 0) {
+  SqueezeOptionsBuilder builder_(_fbb);
+  builder_.add_squeeze_dims(squeeze_dims);
+  return builder_.Finish();
+}
+
+inline flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptionsDirect(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<int32_t> *squeeze_dims = nullptr) {
+  return tflite::CreateSqueezeOptions(
+      _fbb, squeeze_dims ? _fbb.CreateVector<int32_t>(*squeeze_dims) : 0);
+}
+
+flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SqueezeOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
 struct OperatorCodeT : public flatbuffers::NativeTable {
   typedef OperatorCode TableType;
   BuiltinOperator builtin_code;
@@ -3535,6 +3883,26 @@ struct Operator FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
                ? static_cast<const MeanOptions *>(builtin_options())
                : nullptr;
   }
+  const SubOptions *builtin_options_as_SubOptions() const {
+    return builtin_options_type() == BuiltinOptions_SubOptions
+               ? static_cast<const SubOptions *>(builtin_options())
+               : nullptr;
+  }
+  const DivOptions *builtin_options_as_DivOptions() const {
+    return builtin_options_type() == BuiltinOptions_DivOptions
+               ? static_cast<const DivOptions *>(builtin_options())
+               : nullptr;
+  }
+  const SqueezeOptions *builtin_options_as_SqueezeOptions() const {
+    return builtin_options_type() == BuiltinOptions_SqueezeOptions
+               ? static_cast<const SqueezeOptions *>(builtin_options())
+               : nullptr;
+  }
+  const SequenceRNNOptions *builtin_options_as_SequenceRNNOptions() const {
+    return builtin_options_type() == BuiltinOptions_SequenceRNNOptions
+               ? static_cast<const SequenceRNNOptions *>(builtin_options())
+               : nullptr;
+  }
   const DepthToSpaceOptions *builtin_options_as_DepthToSpaceOptions() const {
     return builtin_options_type() == BuiltinOptions_DepthToSpaceOptions
                ? static_cast<const DepthToSpaceOptions *>(builtin_options())
@@ -3723,6 +4091,28 @@ inline const TransposeOptions *Operator::builtin_options_as<TransposeOptions>()
 template <>
 inline const MeanOptions *Operator::builtin_options_as<MeanOptions>() const {
   return builtin_options_as_MeanOptions();
+}
+
+template <>
+inline const SubOptions *Operator::builtin_options_as<SubOptions>() const {
+  return builtin_options_as_SubOptions();
+}
+
+template <>
+inline const DivOptions *Operator::builtin_options_as<DivOptions>() const {
+  return builtin_options_as_DivOptions();
+}
+
+template <>
+inline const SqueezeOptions *Operator::builtin_options_as<SqueezeOptions>()
+    const {
+  return builtin_options_as_SqueezeOptions();
+}
+
+template <>
+inline const SequenceRNNOptions *
+Operator::builtin_options_as<SequenceRNNOptions>() const {
+  return builtin_options_as_SequenceRNNOptions();
 }
 
 template <>
@@ -4655,6 +5045,51 @@ inline flatbuffers::Offset<RNNOptions> CreateRNNOptions(
   return tflite::CreateRNNOptions(_fbb, _fused_activation_function);
 }
 
+inline SequenceRNNOptionsT *SequenceRNNOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new SequenceRNNOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void SequenceRNNOptions::UnPackTo(
+    SequenceRNNOptionsT *_o,
+    const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = time_major();
+    _o->time_major = _e;
+  }
+  {
+    auto _e = fused_activation_function();
+    _o->fused_activation_function = _e;
+  }
+}
+
+inline flatbuffers::Offset<SequenceRNNOptions> SequenceRNNOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const SequenceRNNOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateSequenceRNNOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<SequenceRNNOptions> CreateSequenceRNNOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SequenceRNNOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const SequenceRNNOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _time_major = _o->time_major;
+  auto _fused_activation_function = _o->fused_activation_function;
+  return tflite::CreateSequenceRNNOptions(_fbb, _time_major,
+                                          _fused_activation_function);
+}
+
 inline FullyConnectedOptionsT *FullyConnectedOptions::UnPack(
     const flatbuffers::resolver_function_t *_resolver) const {
   auto _o = new FullyConnectedOptionsT();
@@ -5408,6 +5843,82 @@ inline flatbuffers::Offset<SpaceToDepthOptions> CreateSpaceToDepthOptions(
   return tflite::CreateSpaceToDepthOptions(_fbb, _block_size);
 }
 
+inline SubOptionsT *SubOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new SubOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void SubOptions::UnPackTo(
+    SubOptionsT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = fused_activation_function();
+    _o->fused_activation_function = _e;
+  };
+}
+
+inline flatbuffers::Offset<SubOptions> SubOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const SubOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateSubOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<SubOptions> CreateSubOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SubOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const SubOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _fused_activation_function = _o->fused_activation_function;
+  return tflite::CreateSubOptions(_fbb, _fused_activation_function);
+}
+
+inline DivOptionsT *DivOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new DivOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void DivOptions::UnPackTo(
+    DivOptionsT *_o, const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = fused_activation_function();
+    _o->fused_activation_function = _e;
+  };
+}
+
+inline flatbuffers::Offset<DivOptions> DivOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const DivOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateDivOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<DivOptions> CreateDivOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const DivOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const DivOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _fused_activation_function = _o->fused_activation_function;
+  return tflite::CreateDivOptions(_fbb, _fused_activation_function);
+}
+
 inline DepthToSpaceOptionsT *DepthToSpaceOptions::UnPack(
     const flatbuffers::resolver_function_t *_resolver) const {
   auto _o = new DepthToSpaceOptionsT();
@@ -5619,6 +6130,51 @@ inline flatbuffers::Offset<MeanOptions> CreateMeanOptions(
   auto _axis = _o->axis.size() ? _fbb.CreateVector(_o->axis) : 0;
   auto _keep_dims = _o->keep_dims;
   return tflite::CreateMeanOptions(_fbb, _axis, _keep_dims);
+}
+
+inline SqueezeOptionsT *SqueezeOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new SqueezeOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void SqueezeOptions::UnPackTo(
+    SqueezeOptionsT *_o,
+    const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = squeeze_dims();
+    if (_e) {
+      _o->squeeze_dims.resize(_e->size());
+      for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
+        _o->squeeze_dims[_i] = _e->Get(_i);
+      }
+    }
+  };
+}
+
+inline flatbuffers::Offset<SqueezeOptions> SqueezeOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const SqueezeOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateSqueezeOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const SqueezeOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const SqueezeOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _squeeze_dims =
+      _o->squeeze_dims.size() ? _fbb.CreateVector(_o->squeeze_dims) : 0;
+  return tflite::CreateSqueezeOptions(_fbb, _squeeze_dims);
 }
 
 inline OperatorCodeT *OperatorCode::UnPack(
@@ -6117,6 +6673,22 @@ inline bool VerifyBuiltinOptions(flatbuffers::Verifier &verifier,
       auto ptr = reinterpret_cast<const MeanOptions *>(obj);
       return verifier.VerifyTable(ptr);
     }
+    case BuiltinOptions_SubOptions: {
+      auto ptr = reinterpret_cast<const SubOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case BuiltinOptions_DivOptions: {
+      auto ptr = reinterpret_cast<const DivOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case BuiltinOptions_SqueezeOptions: {
+      auto ptr = reinterpret_cast<const SqueezeOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case BuiltinOptions_SequenceRNNOptions: {
+      auto ptr = reinterpret_cast<const SequenceRNNOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return verifier.VerifyTable(ptr);
@@ -6253,6 +6825,22 @@ inline void *BuiltinOptionsUnion::UnPack(
       auto ptr = reinterpret_cast<const MeanOptions *>(obj);
       return ptr->UnPack(resolver);
     }
+    case BuiltinOptions_SubOptions: {
+      auto ptr = reinterpret_cast<const SubOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
+    case BuiltinOptions_DivOptions: {
+      auto ptr = reinterpret_cast<const DivOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
+    case BuiltinOptions_SqueezeOptions: {
+      auto ptr = reinterpret_cast<const SqueezeOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
+    case BuiltinOptions_SequenceRNNOptions: {
+      auto ptr = reinterpret_cast<const SequenceRNNOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return ptr->UnPack(resolver);
@@ -6375,6 +6963,22 @@ inline flatbuffers::Offset<void> BuiltinOptionsUnion::Pack(
     case BuiltinOptions_MeanOptions: {
       auto ptr = reinterpret_cast<const MeanOptionsT *>(value);
       return CreateMeanOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_SubOptions: {
+      auto ptr = reinterpret_cast<const SubOptionsT *>(value);
+      return CreateSubOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_DivOptions: {
+      auto ptr = reinterpret_cast<const DivOptionsT *>(value);
+      return CreateDivOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_SqueezeOptions: {
+      auto ptr = reinterpret_cast<const SqueezeOptionsT *>(value);
+      return CreateSqueezeOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_SequenceRNNOptions: {
+      auto ptr = reinterpret_cast<const SequenceRNNOptionsT *>(value);
+      return CreateSequenceRNNOptions(_fbb, ptr, _rehasher).Union();
     }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptionsT *>(value);
@@ -6510,6 +7114,24 @@ inline BuiltinOptionsUnion::BuiltinOptionsUnion(const BuiltinOptionsUnion &u)
     }
     case BuiltinOptions_MeanOptions: {
       value = new MeanOptionsT(*reinterpret_cast<MeanOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_SubOptions: {
+      value = new SubOptionsT(*reinterpret_cast<SubOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_DivOptions: {
+      value = new DivOptionsT(*reinterpret_cast<DivOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_SqueezeOptions: {
+      value =
+          new SqueezeOptionsT(*reinterpret_cast<SqueezeOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_SequenceRNNOptions: {
+      value = new SequenceRNNOptionsT(
+          *reinterpret_cast<SequenceRNNOptionsT *>(u.value));
       break;
     }
     case BuiltinOptions_DepthToSpaceOptions: {
@@ -6656,6 +7278,26 @@ inline void BuiltinOptionsUnion::Reset() {
     }
     case BuiltinOptions_MeanOptions: {
       auto ptr = reinterpret_cast<MeanOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_SubOptions: {
+      auto ptr = reinterpret_cast<SubOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_DivOptions: {
+      auto ptr = reinterpret_cast<DivOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_SqueezeOptions: {
+      auto ptr = reinterpret_cast<SqueezeOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_SequenceRNNOptions: {
+      auto ptr = reinterpret_cast<SequenceRNNOptionsT *>(value);
       delete ptr;
       break;
     }
