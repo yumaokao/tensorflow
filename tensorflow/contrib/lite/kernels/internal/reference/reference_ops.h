@@ -2249,9 +2249,10 @@ inline void Gather(const T* input_data, const Dims<4>& input_dims,
   }
 }
 
-inline void ResizeBilinear(const float* input_data, const Dims<4>& input_dims,
+template <typename T>
+inline void ResizeBilinear(const T* input_data, const Dims<4>& input_dims,
                            const int32* output_size_data,
-                           const Dims<4>& output_size_dims, float* output_data,
+                           const Dims<4>& output_size_dims, T* output_data,
                            const Dims<4>& output_dims) {
   int32 batches = MatchingArraySize(input_dims, 3, output_dims, 3);
   int32 input_height = ArraySize(input_dims, 2);
@@ -2286,7 +2287,10 @@ inline void ResizeBilinear(const float* input_data, const Dims<4>& input_dims,
                                     (1 - (input_y - y0)) * (input_x - x0) +
                                 input_data[Offset(input_dims, c, x1, y1, b)] *
                                     (input_y - y0) * (input_x - x0);
-          output_data[Offset(output_dims, c, x, y, b)] = interpolation;
+          if (sizeof(T))
+            output_data[Offset(output_dims, c, x, y, b)] = static_cast<T>(std::round(interpolation));
+          else
+            output_data[Offset(output_dims, c, x, y, b)] = interpolation;
         }
       }
     }

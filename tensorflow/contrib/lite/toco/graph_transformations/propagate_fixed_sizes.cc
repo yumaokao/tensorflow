@@ -87,7 +87,8 @@ int GetOutputDepthFromWeights(const Model& model, const Operator& op) {
   const string& weights_name = op.inputs[1];
   const auto& weights_shape = model.arrays.at(weights_name)->shape();
   if (op.type == OperatorType::kConv ||
-      op.type == OperatorType::kFullyConnected) {
+      op.type == OperatorType::kFullyConnected ||
+      op.type == OperatorType::kTransposeConv) {
     return weights_shape.dims(0);
   } else if (op.type == OperatorType::kDepthwiseConv) {
     return weights_shape.dims(3);
@@ -117,7 +118,6 @@ bool EnsureBiasVectorShape(Model* model, Operator* op) {
 
   auto& float_buffer = bias_array.GetMutableBuffer<ArrayDataType::kFloat>();
   float_buffer.data.resize(output_depth, 0);
-
   return true;
 }
 
@@ -206,6 +206,38 @@ void ProcessDepthwiseConvOperator(Model* model, DepthwiseConvOperator* op) {
                    op->stride_height, op->padding.type,
                    model->GetArray(output_name).mutable_shape(),
                    &op->padding.GetOrCreateFixedPadding());
+}
+
+void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
+  if (!EnsureBiasVectorShape(model, op)) {
+    return;
+  }
+
+  const auto& input_array = *model->arrays[op->inputs[0]];
+  // Yield until input dims have been resolved.
+  if (!input_array.has_shape()) {
+    return;
+  }
+  const auto& input_shape = input_array.shape();
+  CHECK_EQ(input_shape.dimensions_count(), 4);
+
+  const auto& weights_array = *model->arrays[op->inputs[1]];
+  // Yield until weights dims have been resolved.
+  if (!weights_array.has_shape()) {
+    return;
+  }
+  const auto& weights_shape = weights_array.shape();
+  CHECK_EQ(weights_shape.dimensions_count(), 4);
+
+  // Direct assign output shape from internal value
+  // In tensorflow, out_shape a const-tensor input
+  // toco Converter will remove the shape tensor and store the values
+  // After ConvertTransposeConv, only keep input & weight
+  model->arrays[op->outputs[0]]->copy_shape(
+      Shape({op->out_shape_N, op->out_shape_H, op->out_shape_W, op->out_shape_C}));
+
+  // ProcessConvOperator use im2col, add if necessary
+  // Set im2col array dimensions if there is one.
 }
 
 void ProcessDepthToSpaceOperator(Model* model, DepthToSpaceOperator* op) {
@@ -1371,6 +1403,7 @@ bool PropagateFixedSizes::Run(Model* model, std::size_t op_index) {
     case OperatorType::kTransposeConv:
       // Unimplemented, hopefully another graph transformation will drop it or
       // rewrite it.
+      ProcessTransposeConvOperator(model, static_cast<TransposeConvOperator*>(op));
       break;
     case OperatorType::kDepthwiseConv:
       ProcessDepthwiseConvOperator(model,

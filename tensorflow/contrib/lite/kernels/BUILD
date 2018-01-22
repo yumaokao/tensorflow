@@ -109,6 +109,7 @@ cc_library(
         "unidirectional_sequence_rnn.cc",
 	"dequantize.cc",
 	"quantize.cc",
+	"transpose_conv.cc",
     ],
     hdrs = [
         "kernel_util.h",

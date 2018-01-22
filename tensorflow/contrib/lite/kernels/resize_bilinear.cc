@@ -49,8 +49,12 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, NumDimensions(input), 4);
 
   // TODO(ahentz): Our current implementations only support float32.
-  if (output->type != kTfLiteUInt8 && output->type != kTfLiteFloat32) {
-    TF_LITE_ENSURE_EQ(context, 0, 1);
+  if (input->type == kTfLiteUInt8) {
+    TF_LITE_ENSURE_EQ(context, input->params.scale, output->params.scale);
+    TF_LITE_ENSURE_EQ(context, input->params.zero_point, output->params.zero_point);
+  }
+  else {
+    TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
   }
   TF_LITE_ENSURE_EQ(context, input->type, output->type);
 
@@ -87,6 +91,10 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
       TF_LITE_RESIZE_BILINEAR(optimized_ops);
     }
 #undef TF_LITE_RESIZE_BILINEAR
+  } else if (output->type == kTfLiteUInt8) {
+      reference_ops::ResizeBilinear(GetTensorData<uint8_t>(input), GetTensorDims(input),
+                                    output_size_data, GetTensorDims({1, 1, 1, 2}),
+                                    GetTensorData<uint8_t>(output), GetTensorDims(output));
   } else {
     context->ReportError(context, "Inputs and outputs not all float types.");
     return kTfLiteError;

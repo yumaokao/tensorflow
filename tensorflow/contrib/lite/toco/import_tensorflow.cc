@@ -1514,6 +1514,7 @@ void ConvertSvdfOperator(const NodeDef& node,
 void ConvertTransposeConvOperator(const NodeDef& node,
                                   const TensorFlowImportFlags& tf_import_flags,
                                   Model* model) {
+  /* Original Code
   CHECK_EQ(node.op(), "Conv2DBackpropInput");
   CheckInputsCount(node, tf_import_flags, 3);
   auto* op = new TransposeConvOperator;
@@ -1521,6 +1522,67 @@ void ConvertTransposeConvOperator(const NodeDef& node,
   op->inputs.push_back(node.input(1));
   op->inputs.push_back(node.input(0));
   op->outputs.push_back(node.name());
+  const auto& strides = GetListAttr(node, "strides");
+  CHECK_EQ(strides.i_size(), 4);
+  CHECK_EQ(strides.i(0), 1);
+  op->stride_height = strides.i(1);
+  op->stride_width = strides.i(2);
+  CHECK_EQ(strides.i(3), 1);
+  auto const& padding = GetStringAttr(node, "padding");
+  if (padding == "SAME") {
+    op->padding.type = PaddingType::kSame;
+  } else if (padding == "VALID") {
+    op->padding.type = PaddingType::kValid;
+  } else {
+    LOG(FATAL) << "Only SAME and VALID padding supported on "
+                  "Conv2DBackpropInput nodes.";
+  }
+  model->operators.emplace_back(op);*/
+
+  CHECK_EQ(node.op(), "Conv2DBackpropInput");
+  CheckInputsCount(node, tf_import_flags, 3);
+  auto* op = new TransposeConvOperator;
+
+  const auto& input_name     = node.input(2);
+  const auto& weights_name   = node.input(1);
+  const auto& out_shape_name = node.input(0);
+  const auto& reordered_weights_name = weights_name + "_reordered";
+
+  // Check if a ReorderAxesOperator was already created for these weights
+  // (that happens when multiple layers share the same weights).
+  const Operator* existing_reorder =
+      GetOpWithOutput(*model, reordered_weights_name);
+  if (existing_reorder) {
+    // Check that it is safe to rely on the _reordered naming of the output
+    // array!
+    CHECK(existing_reorder->type == OperatorType::kReorderAxes);
+  } else {
+    // Create a new ReorderAxesOperator
+    auto* reorder = new ReorderAxesOperator;
+    reorder->inputs = {weights_name};
+    reorder->outputs = {reordered_weights_name};
+    reorder->input_axes_order = AxesOrder::kHWOI;
+    reorder->output_axes_order = AxesOrder::kOHWI;
+    model->operators.emplace_back(reorder);
+  }
+
+  // Remove shape-tensor, keep input & weight
+  op->inputs = {input_name, reordered_weights_name};
+  op->outputs = {node.name()};
+
+  // Store Out Shape
+  const auto& output_size_array = *model->arrays[out_shape_name];
+  if (!output_size_array.buffer) {
+      return;
+  }
+  std::vector<int32> output_shape =
+        output_size_array.GetBuffer<ArrayDataType::kInt32>().data;
+
+  op->out_shape_N = output_shape[0];
+  op->out_shape_H = output_shape[1];
+  op->out_shape_W = output_shape[2];
+  op->out_shape_C = output_shape[3];
+
   const auto& strides = GetListAttr(node, "strides");
   CHECK_EQ(strides.i_size(), 4);
   CHECK_EQ(strides.i(0), 1);

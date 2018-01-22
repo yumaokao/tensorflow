@@ -137,6 +137,7 @@ enum class AxesOrder {
   k1HWO,     // Our standard for DepthwiseConv weights
   kHWIM,     // TensorFlow DepthwiseConv weights
   kNHWC,     // TensorFlow activations
+  kHWOI,     // TensorFlow TransposeConv weights
 };
 
 // The type of the scalars in an array.
@@ -827,6 +828,10 @@ struct TransposeConvOperator : Operator {
   Padding padding;
   int stride_width = 0;
   int stride_height = 0;
+  int out_shape_N = 0;
+  int out_shape_H = 0;
+  int out_shape_W = 0;
+  int out_shape_C = 0;
 };
 
 // Given a tensor input, this operation inserts a dimension of 1 at the

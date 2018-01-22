@@ -118,6 +118,7 @@ enum BuiltinOperator : byte {
   DIV = 42,
   SQUEEZE = 43,
   QUANTIZE = 50,
+  TRANSPOSE_CONV = 51,
 }
 
 // Options for the builtin operators.
@@ -154,6 +155,7 @@ union BuiltinOptions {
   SqueezeOptions,
   SequenceRNNOptions,
   DepthToSpaceOptions,
+  TransposeConvOptions,
 }
 
 enum Padding : byte { SAME, VALID }
@@ -171,6 +173,17 @@ table Conv2DOptions {
   padding:Padding;
   stride_w:int;
   stride_h:int;
+  fused_activation_function:ActivationFunctionType;
+}
+
+table TransposeConvOptions {
+  padding:Padding;
+  stride_w:int;
+  stride_h:int;
+  out_shape_N:int;
+  out_shape_H:int;
+  out_shape_W:int;
+  out_shape_C:int;
   fused_activation_function:ActivationFunctionType;
 }
 
