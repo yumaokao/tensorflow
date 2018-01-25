@@ -46,6 +46,7 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kTensorFlowReshape ||
          type == OperatorType::kMul || type == OperatorType::kSpaceToDepth ||
          type == OperatorType::kResizeBilinear ||
+         type == OperatorType::kMean ||
          type == OperatorType::kDepthToSpace ||
          type == OperatorType::kTransposeConv;
 }
