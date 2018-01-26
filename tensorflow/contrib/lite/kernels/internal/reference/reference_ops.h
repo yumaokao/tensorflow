@@ -360,6 +360,211 @@ void Conv(const uint8* input_data, const Dims<4>& input_dims,
            output_dims, im2col_data, im2col_dims, gemm_context);
 }
 
+inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
+                          const float* filter_data, const Dims<4>& filter_dims,
+                          const float* bias_data, const Dims<4>& bias_dims,
+                          int stride_width, int stride_height, int pad_width,
+                          int pad_height, float output_activation_min,
+                          float output_activation_max, float* output_data,
+                          const Dims<4>& output_dims) {
+  if (bias_data) {
+    TFLITE_DCHECK_EQ(ArraySize(filter_dims, 3), ArraySize(bias_dims, 0));
+  }
+
+  int32 input_batches = input_dims.sizes[3];
+  int32 input_height = input_dims.sizes[2];
+  int32 input_width = input_dims.sizes[1];
+  int32 input_depth = input_dims.sizes[0];
+
+  int32 filter_batches = filter_dims.sizes[3];
+  int32 filter_height = filter_dims.sizes[2];
+  int32 filter_width = filter_dims.sizes[1];
+
+  int32 output_height = output_dims.sizes[2];
+  int32 output_width = output_dims.sizes[1];
+
+  int output_depth = filter_batches;
+  int filter_left_offset =
+    ((input_width - 1) * stride_width + filter_width - output_width + 1) / 2;
+  int filter_top_offset =
+    ((input_height - 1) * stride_height + filter_height - output_height + 1) / 2;
+
+  for (int batch = 0; batch < input_batches; batch++) {
+    // For each channel in the output (which is the input of the conv2d).
+    for (int c = 0; c < output_depth; c++) {
+      // NOTE: output_data should be initialized to 0 or there will
+      // be some issues (weird number) during accumulation.
+      for (int x = 0; x < output_height; x++) {
+        for (int y = 0; y < output_width; y++) {
+          const int output_index =
+                                  (batch * output_height * output_width * output_depth) +
+                                  (x * output_width * output_depth) + (y * output_depth) + (c);
+          if (bias_data) {
+            // Assign bias directly.
+            output_data[output_index] = bias_data[c];
+          } else {
+            output_data[output_index] = 0.0f;
+          }
+        }
+      }
+      // We know that output_data is initialized as an array with zeros
+      // h and w are the coordinate for an element in the gradient of output
+      // (input_data)
+      for (int h = 0; h < input_height; h++) {
+        for (int w = 0; w < input_width; w++) {
+          // x and y are the coordinate of the center of the kernel that
+          // outputs the element at (h, w).
+          int x = filter_height / 2 + h * stride_height- filter_top_offset;
+          int y = filter_width / 2 + w * stride_width- filter_left_offset;
+
+          for (int kx = 0; kx < filter_height; kx++) {
+            for (int ky = 0; ky < filter_width; ky++) {
+              int ox = x + kx - filter_height / 2;
+              int oy = y + ky - filter_width / 2;
+              const int output_index = (batch * output_height * output_width * output_depth) +
+                                       (ox * output_width * output_depth) + (oy * output_depth) +
+                                       (c);
+              // initialize
+              auto total = output_data[output_index];
+              for (int f = 0; f < input_depth; f++) {
+                const auto input_source_value =
+                  input_data[(batch * input_height * input_width * input_depth) +
+                             (h * input_width * input_depth) +
+                             (w * input_depth) + (f)];
+
+                const auto filter_source_value =
+                  filter_data[(c * filter_width * filter_height * input_depth) +
+                              (kx * filter_width * input_depth) +
+                              (ky * input_depth) + (f)];
+
+                total += input_source_value * filter_source_value;
+              }
+              output_data[output_index] = total;
+            }
+          }
+        }
+      }
+    }
+  }
+  // Apply activation.
+  for (int o_i = 0; o_i < input_batches*output_width*output_height*output_depth; o_i++) {
+    output_data[o_i] =
+      ActivationFunctionWithMinMax(output_data[o_i],
+                                   output_activation_min, output_activation_max);
+  }
+  return;
+}
+
+
+inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
+                          int32 input_offset, const uint8* filter_data,
+                          const Dims<4>& filter_dims, int32 filter_offset,
+                          const int32* bias_data, const Dims<4>& bias_dims,
+                          int stride_width, int stride_height, int pad_width,
+                          int pad_height, int32 output_offset, int32 output_multiplier,
+                          int output_shift, int32 output_activation_min,
+                          int32 output_activation_max, uint8* output_data,
+                          const Dims<4>& output_dims) {
+  if (bias_data) {
+    TFLITE_DCHECK_EQ(ArraySize(filter_dims, 3), ArraySize(bias_dims, 0));
+  }
+
+  int32 input_batches = input_dims.sizes[3];
+  int32 input_height = input_dims.sizes[2];
+  int32 input_width = input_dims.sizes[1];
+  int32 input_depth = input_dims.sizes[0];
+
+  int32 filter_batches = filter_dims.sizes[3];
+  int32 filter_height = filter_dims.sizes[2];
+  int32 filter_width = filter_dims.sizes[1];
+
+  int32 output_height = output_dims.sizes[2];
+  int32 output_width = output_dims.sizes[1];
+
+  int output_depth = filter_batches;
+
+  int32 output_data_meta[input_batches*output_height*output_width*output_depth];
+
+  int filter_left_offset =
+      ((input_width - 1) * stride_width + filter_width - output_width + 1) / 2;
+  int filter_top_offset =
+      ((input_height - 1) * stride_height + filter_height - output_height + 1) / 2;
+
+  for (int batch = 0; batch < input_batches; batch++) {
+    // For each channel in the output (which is the input of the conv2d).
+    for (int c = 0; c < output_depth; c++) {
+      // NOTE: output_data should be initialized to 0 or there will
+      // be some issues (weird number) during accumulation.
+      for (int x = 0; x < output_height; x++) {
+        for (int y = 0; y < output_width; y++) {
+          const int output_index = (batch * output_height * output_width * output_depth) +
+                                   (x * output_width * output_depth) + (y * output_depth) + (c);
+          if (bias_data) {
+            // Assign bias directly.
+            output_data_meta[output_index] = bias_data[c];
+          } else {
+            output_data_meta[output_index] = 0.0f;
+          }
+        }
+      }
+      // We know that output_data is initialized as an array with zeros
+      // h and w are the coordinate for an element in the gradient of output
+      // (input_data)
+      for (int h = 0; h < input_height; h++) {
+        for (int w = 0; w < input_width; w++) {
+          // x and y are the coordinate of the center of the kernel that
+          // outputs the element at (h, w).
+          int x = filter_height / 2 + h * stride_height- filter_top_offset;
+          int y = filter_width / 2 + w * stride_width- filter_left_offset;
+
+          for (int kx = 0; kx < filter_height; kx++) {
+            for (int ky = 0; ky < filter_width; ky++) {
+              int ox = x + kx - filter_height / 2;
+              int oy = y + ky - filter_width / 2;
+              const int output_index =
+                  (batch * output_height * output_width * output_depth) +
+                  (ox * output_width * output_depth) + (oy * output_depth) +
+                  (c);
+              // initialize
+              int32 total = output_data_meta[output_index];
+              for (int f = 0; f < input_depth; f++) {
+                const auto input_source_value =
+                    input_data[(batch * input_height * input_width * input_depth) +
+                               (h * input_width * input_depth) +
+                               (w * input_depth) + (f)];
+
+                const auto filter_source_value =
+                    filter_data[(c * filter_width * filter_height * input_depth) +
+                                (kx * filter_width * input_depth) +
+                                (ky * input_depth) + (f)];
+
+                const int32 input_value =
+                    static_cast<int32>(input_source_value) - input_offset;
+                const int32 filter_value =
+                    static_cast<int32>(filter_source_value) - filter_offset;
+
+                total += input_value * filter_value;
+              }
+              output_data_meta[output_index] = total;
+            }
+          }
+        }
+      }
+    }
+  }
+  // Apply activation and requant.
+  for (int o_i = 0; o_i < input_batches*output_width*output_height*output_depth; o_i++) {
+    auto acc = output_data_meta[o_i];
+    acc = MultiplyByQuantizedMultiplierSmallerThanOne(acc, output_multiplier, output_shift);
+    acc += output_offset;
+    acc = std::max(acc, output_activation_min);
+    acc = std::min(acc, output_activation_max);
+    output_data[o_i] = acc;
+  }
+  return;
+}
+
+
 template <typename T>
 inline void DepthToSpace(const T* input_data, const Dims<4>& input_dims,
                          int block_size, T* output_data,

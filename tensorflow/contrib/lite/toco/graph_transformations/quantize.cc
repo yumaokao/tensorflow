@@ -173,7 +173,8 @@ bool ChooseQuantizationForOperatorInput(
   }
   if (op.type == OperatorType::kConv ||
       op.type == OperatorType::kDepthwiseConv ||
-      op.type == OperatorType::kFullyConnected) {
+      op.type == OperatorType::kFullyConnected ||
+      op.type == OperatorType::kTransposeConv) {
     if (input_index == 2) {
       // Quantization of bias vector.
       // We need both of the mandatory inputs (input activations and weights) to
