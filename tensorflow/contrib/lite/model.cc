@@ -283,6 +283,22 @@ void* ParseOpData(const Operator* op, BuiltinOperator op_type,
       builtin_data = reinterpret_cast<void*>(params);
       break;
     }
+    case BuiltinOperator_TRANSPOSE_CONV: {
+      TfLiteTransposeConvParams* params = MallocPOD<TfLiteTransposeConvParams>();
+      if (auto* transpose_conv_params = op->builtin_options_as_TransposeConvOptions()) {
+        params->padding = parse_padding(transpose_conv_params->padding());
+        params->stride_width = transpose_conv_params->stride_w();
+        params->stride_height = transpose_conv_params->stride_h();
+        params->out_shape_N = transpose_conv_params->out_shape_N();
+        params->out_shape_H = transpose_conv_params->out_shape_H();
+        params->out_shape_W = transpose_conv_params->out_shape_W();
+        params->out_shape_C = transpose_conv_params->out_shape_C();
+        params->activation =
+            parse_activation(transpose_conv_params->fused_activation_function());
+      }
+      builtin_data = reinterpret_cast<void*>(params);
+      break;
+    }
     case BuiltinOperator_TANH:
     case BuiltinOperator_LOGISTIC:
     case BuiltinOperator_RELU:

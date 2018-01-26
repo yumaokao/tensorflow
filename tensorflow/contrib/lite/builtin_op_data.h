@@ -58,6 +58,17 @@ typedef struct {
   TfLitePadding padding;
   int stride_width;
   int stride_height;
+  int out_shape_N;
+  int out_shape_H;
+  int out_shape_W;
+  int out_shape_C;
+  TfLiteFusedActivation activation;
+} TfLiteTransposeConvParams;
+
+typedef struct {
+  TfLitePadding padding;
+  int stride_width;
+  int stride_height;
   int filter_width;
   int filter_height;
   TfLiteFusedActivation activation;
