@@ -3563,7 +3563,7 @@ template <typename T>
 inline void Pad(const T* input_data, const Dims<4>& input_dims,
                 const std::vector<int>& left_paddings,
                 const std::vector<int>& right_paddings, T* output_data,
-                const Dims<4>& output_dims) {
+                const Dims<4>& output_dims, const T pad_value) {
   gemmlowp::ScopedProfilingLabel label("Pad");
   const int output_batch = ArraySize(output_dims, 3);
   const int output_height = ArraySize(output_dims, 2);
@@ -3583,27 +3583,30 @@ inline void Pad(const T* input_data, const Dims<4>& input_dims,
   const int input_depth = ArraySize(input_dims, 0);
 
   if (left_b_padding != 0) {
-    memset(output_data, 0,
-           left_b_padding * output_height * output_width * output_depth *
-               sizeof(T));
+    for (auto i = 0 ; i < left_b_padding * output_height * output_width * output_depth ; i ++) {
+      output_data[i] = pad_value;
+    }
   }
   for (int out_b = left_b_padding; out_b < output_batch - right_b_padding;
        ++out_b) {
     if (left_h_padding != 0) {
-      memset(output_data + Offset(output_dims, 0, 0, 0, out_b), 0,
-             left_h_padding * output_width * output_depth * sizeof(T));
+      for (auto i = 0 ; i < left_h_padding * output_width * output_depth ; i ++) {
+        output_data[Offset(output_dims, 0, 0, 0, out_b) + i] = pad_value;
+      }
     }
     for (int out_h = left_h_padding; out_h < output_height - right_h_padding;
          ++out_h) {
       if (left_w_padding != 0) {
-        memset(output_data + Offset(output_dims, 0, 0, out_h, out_b), 0,
-               left_w_padding * output_depth * sizeof(T));
+        for (auto i = 0 ; i < left_w_padding * output_depth ; i ++) {
+          output_data[Offset(output_dims, 0, 0, out_h, out_b) + i] = pad_value;
+        }
       }
       for (int out_w = left_w_padding; out_w < output_width - right_w_padding;
            ++out_w) {
         if (left_d_padding != 0) {
-          memset(output_data + Offset(output_dims, 0, out_w, out_h, out_b), 0,
-                 left_d_padding * sizeof(T));
+          for (auto i = 0 ; i < left_d_padding ; i ++) {
+            output_data[Offset(output_dims, 0, out_w, out_h, out_b) + i] = pad_value;
+          }
         }
 
         T* out = output_data +
@@ -3614,31 +3617,27 @@ inline void Pad(const T* input_data, const Dims<4>& input_dims,
         memcpy(out, in, input_depth * sizeof(T));
 
         if (right_d_padding != 0) {
-          memset(
-              output_data + Offset(output_dims, output_depth - right_d_padding,
-                                   out_w, out_h, out_b),
-              0, right_d_padding * sizeof(T));
+          for (auto i = 0 ; i < right_d_padding ; i ++) {
+            output_data[Offset(output_dims, output_depth - right_d_padding, out_w, out_h, out_b) + i] = pad_value;
+          }
         }
       }
       if (right_w_padding != 0) {
-        memset(
-            output_data + Offset(output_dims, 0, output_width - right_w_padding,
-                                 out_h, out_b),
-            0, right_w_padding * output_depth * sizeof(T));
+        for (auto i = 0 ; i < right_w_padding * output_depth ; i ++) {
+          output_data[Offset(output_dims, 0, output_width - right_w_padding, out_h, out_b) + i] = pad_value;
+        }
       }
     }
     if (right_h_padding != 0) {
-      memset(output_data + Offset(output_dims, 0, 0,
-                                  output_height - right_h_padding, out_b),
-             0, right_h_padding * output_width * output_depth * sizeof(T));
+      for (auto i = 0 ; i < right_h_padding * output_width * output_depth ; i ++) {
+        output_data[Offset(output_dims, 0, 0, output_height - right_h_padding, out_b) + i] = pad_value;
+      }
     }
   }
   if (right_b_padding != 0) {
-    memset(output_data +
-               Offset(output_dims, 0, 0, 0, output_batch - right_b_padding),
-           0,
-           right_b_padding * output_height * output_width * output_depth *
-               sizeof(T));
+    for (auto i = 0 ; i < right_b_padding * output_height * output_width * output_depth ; i ++) {
+      output_data[Offset(output_dims, 0, 0, 0, output_batch - right_b_padding) + i] = pad_value;
+    }
   }
 }
 
