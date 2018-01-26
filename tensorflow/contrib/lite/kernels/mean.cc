@@ -59,6 +59,10 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
 
   MeanContext op_context(context, node);
+
+  TF_LITE_ENSURE_EQ(context, op_context.input->params.scale, op_context.output->params.scale);
+  TF_LITE_ENSURE_EQ(context, op_context.input->params.zero_point, op_context.output->params.zero_point);
+
   int input_num_dims = NumDimensions(op_context.input);
   int axis_num_dims = op_context.params->num_axis_dimensions;
 

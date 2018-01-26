@@ -2494,6 +2494,8 @@ inline void Mean(T* input_data, const int* input_dims, const int input_num_dims,
   for (int idx = 0; idx < input_num_dims; ++idx) {
     temp_index[idx] = 0;
   }
+  // buffer for the sum (use float instead of T type)
+  std::vector<float> tmp_output(num_outputs, 0.0f);
   // resolves axis.
   int num_resolved_axis = 0;
   for (int idx = 0; idx < num_axis_dimensions; ++idx) {
@@ -2521,7 +2523,7 @@ inline void Mean(T* input_data, const int* input_dims, const int input_num_dims,
     size_t output_offset =
         ReducedOutputOffset(input_num_dims, input_dims, temp_index,
                             num_resolved_axis, resolved_axis);
-    output_data[output_offset] += input_data[input_offset];
+    tmp_output[output_offset] += input_data[input_offset];
   }
   // takes average by num of elements added to get mean.
   size_t num_elements_in_axis = 1;
@@ -2529,7 +2531,7 @@ inline void Mean(T* input_data, const int* input_dims, const int input_num_dims,
     num_elements_in_axis *= static_cast<size_t>(input_dims[resolved_axis[idx]]);
   }
   for (size_t idx = 0; idx < num_outputs; ++idx) {
-    output_data[idx] = static_cast<T>(static_cast<float>(output_data[idx]) /
+    output_data[idx] = static_cast<T>(tmp_output[idx] /
                                       num_elements_in_axis);
   }
 }
