@@ -1586,7 +1586,7 @@ void ConvertTransposeConvOperator(const NodeDef& node,
   op->outputs = {node.name()};
 
   // Store Out Shape
-  const auto& output_size_array = *model->arrays[out_shape_name];
+  const auto& output_size_array = model->GetArray(out_shape_name);
   if (!output_size_array.buffer) {
       return;
   }

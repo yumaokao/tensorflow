@@ -68,7 +68,7 @@ bool ResolveConstantResizeBilinear::Run(Model* model, std::size_t op_index) {
 
   // Now could remove inputs[1]
   if (CountOpsWithInput(*model, resize_bilinear_op->inputs[1]) == 1) {
-    model->arrays.erase(resize_bilinear_op->inputs[1]);
+    model->EraseArray(resize_bilinear_op->inputs[1]);
   }
   resize_bilinear_op->inputs.resize(1);
 

@@ -213,7 +213,7 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
     return;
   }
 
-  const auto& input_array = *model->arrays[op->inputs[0]];
+  const auto& input_array = model->GetArray(op->inputs[0]);
   // Yield until input dims have been resolved.
   if (!input_array.has_shape()) {
     return;
@@ -221,7 +221,7 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
   const auto& input_shape = input_array.shape();
   CHECK_EQ(input_shape.dimensions_count(), 4);
 
-  const auto& weights_array = *model->arrays[op->inputs[1]];
+  const auto& weights_array = model->GetArray(op->inputs[1]);
   // Yield until weights dims have been resolved.
   if (!weights_array.has_shape()) {
     return;
@@ -233,7 +233,7 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
   // In tensorflow, out_shape a const-tensor input
   // toco Converter will remove the shape tensor and store the values
   // After ConvertTransposeConv, only keep input & weight
-  model->arrays[op->outputs[0]]->copy_shape(
+  model->GetArray(op->outputs[0]).copy_shape(
       Shape({op->out_shape_N, op->out_shape_H, op->out_shape_W, op->out_shape_C}));
 
   // ProcessConvOperator use im2col, add if necessary
@@ -766,7 +766,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   QCHECK_EQ(op->outputs.size(), GruCellOperator::NUM_OUTPUTS);
 
   const auto& input_array =
-      *model->arrays[op->inputs[GruCellOperator::DATA_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::DATA_INPUT]);
   // Yield until all input dims have been resolved.
   if (!input_array.has_shape()) {
     return;
@@ -775,7 +775,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   CHECK_GE(input_shape.dimensions_count(), 2);
 
   const auto& prev_state_array =
-      *model->arrays[op->inputs[GruCellOperator::PREV_STATE_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::PREV_STATE_INPUT]);
   // Yield until all input dims have been resolved.
   if (!prev_state_array.has_shape()) {
     return;
@@ -784,7 +784,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   CHECK_GE(prev_state_shape.dimensions_count(), 2);
 
   const auto& weight_activation_array =
-      *model->arrays[op->inputs[GruCellOperator::WEIGHTS_ACTIVATION_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::WEIGHTS_ACTIVATION_INPUT]);
   // Yield until all input dims have been resolved.
   if (!weight_activation_array.has_shape()) {
     return;
@@ -793,7 +793,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   CHECK_EQ(weight_activation_shape.dimensions_count(), 2);
 
   const auto& bias_activation_array =
-      *model->arrays[op->inputs[GruCellOperator::BIASES_ACTIVATION_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::BIASES_ACTIVATION_INPUT]);
   // Yield until all input dims have been resolved.
   if (!bias_activation_array.has_shape()) {
     return;
@@ -803,7 +803,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   CHECK_EQ(weight_activation_shape.dims(0), bias_activation_shape.dims(0));
 
   const auto& weight_gate_array =
-      *model->arrays[op->inputs[GruCellOperator::WEIGHTS_GATE_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::WEIGHTS_GATE_INPUT]);
   // Yield until all input dims have been resolved.
   if (!weight_gate_array.has_shape()) {
     return;
@@ -812,7 +812,7 @@ void ProcessGruCellOperator(Model* model, GruCellOperator* op) {
   CHECK_EQ(weight_gate_shape.dimensions_count(), 2);
 
   const auto& bias_gate_array =
-      *model->arrays[op->inputs[GruCellOperator::BIASES_GATE_INPUT]];
+      model->GetArray(op->inputs[GruCellOperator::BIASES_GATE_INPUT]);
   // Yield until all input dims have been resolved.
   if (!bias_gate_array.has_shape()) {
     return;

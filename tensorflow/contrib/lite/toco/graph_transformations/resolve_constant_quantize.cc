@@ -70,7 +70,7 @@ bool ResolveConstantQuantize::Run(Model* model, std::size_t op_index) {
 
   for (int i = 1; i <= 2; i++) {
     if (CountOpsWithInput(*model, quantize_op->inputs[i]) == 1) {
-      model->arrays.erase(quantize_op->inputs[i]);
+      model->EraseArray(quantize_op->inputs[i]);
     }
   }
   quantize_op->inputs.resize(1);
