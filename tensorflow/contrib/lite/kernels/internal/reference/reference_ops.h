@@ -384,10 +384,11 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
   int32 output_width = output_dims.sizes[1];
 
   int output_depth = filter_batches;
+
   int filter_left_offset =
-    ((input_width - 1) * stride_width + filter_width - output_width + 1) / 2;
+    std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
   int filter_top_offset =
-    ((input_height - 1) * stride_height + filter_height - output_height + 1) / 2;
+    std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
 
   for (int batch = 0; batch < input_batches; batch++) {
     // For each channel in the output (which is the input of the conv2d).
@@ -486,9 +487,9 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
   int32 output_data_meta[input_batches*output_height*output_width*output_depth];
 
   int filter_left_offset =
-      ((input_width - 1) * stride_width + filter_width - output_width + 1) / 2;
+    std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
   int filter_top_offset =
-      ((input_height - 1) * stride_height + filter_height - output_height + 1) / 2;
+    std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
 
   for (int batch = 0; batch < input_batches; batch++) {
     // For each channel in the output (which is the input of the conv2d).
