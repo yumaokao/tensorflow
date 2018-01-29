@@ -67,7 +67,8 @@ TfLiteStatus GenericPrepare(TfLiteContext* context, TfLiteNode* node) {
   auto* params = reinterpret_cast<TfLitePoolParams*>(node->builtin_data);
   OpData* data = reinterpret_cast<OpData*>(node->user_data);
 
-  TF_LITE_ENSURE_EQ(context, NumInputs(node), 1);
+  // TODO(yumaokao): for MaxPoolV2
+  // TF_LITE_ENSURE_EQ(context, NumInputs(node), 1);
   TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
   TfLiteTensor* output = GetOutput(context, node, 0);
   TfLiteTensor* input = GetInput(context, node, 0);
