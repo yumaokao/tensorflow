@@ -725,6 +725,19 @@ void ConvertAddOperator(const NodeDef& node,
   model->operators.emplace_back(op);
 }
 
+void ConvertAddNOperator(const NodeDef& node,
+                         const TensorFlowImportFlags& tf_import_flags,
+                         Model* model) {
+  CHECK_EQ(node.op(), "AddN");
+  const int num_inputs = GetInputsCount(node, tf_import_flags);
+  auto* op = new AddNOperator;
+  for (int i = 0; i < num_inputs; ++i) {
+    op->inputs.push_back(node.input(i));
+  }
+  op->outputs.push_back(node.name());
+  model->operators.emplace_back(op);
+}
+
 void ConvertMulOperator(const NodeDef& node,
                         const TensorFlowImportFlags& tf_import_flags,
                         Model* model) {
@@ -1208,6 +1221,8 @@ void ConvertStridedSliceOperator(const NodeDef& node,
                                  const TensorFlowImportFlags& tf_import_flags,
                                  Model* model) {
   CHECK_EQ(node.op(), "StridedSlice");
+  // TODO(soroosh): The 4th input (strides) should be e optional, to be
+  // consistent with TF.
   CheckInputsCount(node, tf_import_flags, 4);
 
   auto* op = new StridedSliceOperator;
@@ -1571,7 +1586,7 @@ void ConvertTransposeConvOperator(const NodeDef& node,
   op->outputs = {node.name()};
 
   // Store Out Shape
-  const auto& output_size_array = *model->arrays[out_shape_name];
+  const auto& output_size_array = model->GetArray(out_shape_name);
   if (!output_size_array.buffer) {
       return;
   }
@@ -1745,7 +1760,7 @@ void StripCaretFromArrayNames(Model* model) {
       output = string(absl::StripPrefix(output, "^"));
     }
   }
-  for (auto& array : model->arrays) {
+  for (auto& array : model->GetArrayMap()) {
     if (absl::StartsWith(array.first, "^")) {
       LOG(FATAL) << "What?";
     }
@@ -1955,6 +1970,8 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertSquareOperator(node, tf_import_flags, model);
     } else if (node.op() == "Add") {
       ConvertAddOperator(node, tf_import_flags, model);
+    } else if (node.op() == "AddN") {
+      ConvertAddNOperator(node, tf_import_flags, model);
     } else if (node.op() == "Mul") {
       ConvertMulOperator(node, tf_import_flags, model);
     } else if (node.op() == "Sub") {

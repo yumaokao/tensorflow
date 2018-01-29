@@ -71,7 +71,7 @@ bool ResolveConstantDequantize::Run(Model* model, std::size_t op_index) {
 
   for (int i = 1; i <= 2; i++) {
     if (CountOpsWithInput(*model, dequantize_op->inputs[i]) == 1) {
-      model->arrays.erase(dequantize_op->inputs[i]);
+      model->EraseArray(dequantize_op->inputs[i]);
     }
   }
   dequantize_op->inputs.resize(1);

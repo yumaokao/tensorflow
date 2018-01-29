@@ -126,6 +126,9 @@ struct MeanOptionsT;
 struct SqueezeOptions;
 struct SqueezeOptionsT;
 
+struct StridedSliceOptions;
+struct StridedSliceOptionsT;
+
 struct OperatorCode;
 struct OperatorCodeT;
 
@@ -215,13 +218,15 @@ enum BuiltinOperator {
   BuiltinOperator_SUB = 41,
   BuiltinOperator_DIV = 42,
   BuiltinOperator_SQUEEZE = 43,
+  BuiltinOperator_UNIDIRECTIONAL_SEQUENCE_LSTM = 44,
+  BuiltinOperator_STRIDED_SLICE = 45,
   BuiltinOperator_QUANTIZE = 50,
   BuiltinOperator_TRANSPOSE_CONV = 51,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
   BuiltinOperator_MAX = BuiltinOperator_TRANSPOSE_CONV
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[46] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[48] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -267,6 +272,8 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[46] {
       BuiltinOperator_SUB,
       BuiltinOperator_DIV,
       BuiltinOperator_SQUEEZE,
+      BuiltinOperator_UNIDIRECTIONAL_SEQUENCE_LSTM,
+      BuiltinOperator_STRIDED_SLICE,
       BuiltinOperator_QUANTIZE,
       BuiltinOperator_TRANSPOSE_CONV};
   return values;
@@ -317,8 +324,8 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "SUB",
                                 "DIV",
                                 "SQUEEZE",
-                                "",
-                                "",
+                                "UNIDIRECTIONAL_SEQUENCE_LSTM",
+                                "STRIDED_SLICE",
                                 "",
                                 "",
                                 "",
@@ -367,13 +374,14 @@ enum BuiltinOptions {
   BuiltinOptions_DivOptions = 29,
   BuiltinOptions_SqueezeOptions = 30,
   BuiltinOptions_SequenceRNNOptions = 31,
-  BuiltinOptions_DepthToSpaceOptions = 32,
-  BuiltinOptions_TransposeConvOptions = 33,
+  BuiltinOptions_StridedSliceOptions = 32,
+  BuiltinOptions_DepthToSpaceOptions = 33,
+  BuiltinOptions_TransposeConvOptions = 34,
   BuiltinOptions_MIN = BuiltinOptions_NONE,
   BuiltinOptions_MAX = BuiltinOptions_TransposeConvOptions
 };
 
-inline BuiltinOptions (&EnumValuesBuiltinOptions())[34] {
+inline BuiltinOptions (&EnumValuesBuiltinOptions())[35] {
   static BuiltinOptions values[] = {
       BuiltinOptions_NONE,
       BuiltinOptions_Conv2DOptions,
@@ -407,6 +415,7 @@ inline BuiltinOptions (&EnumValuesBuiltinOptions())[34] {
       BuiltinOptions_DivOptions,
       BuiltinOptions_SqueezeOptions,
       BuiltinOptions_SequenceRNNOptions,
+      BuiltinOptions_StridedSliceOptions,
       BuiltinOptions_DepthToSpaceOptions,
       BuiltinOptions_TransposeConvOptions};
   return values;
@@ -445,6 +454,7 @@ inline const char **EnumNamesBuiltinOptions() {
                                 "DivOptions",
                                 "SqueezeOptions",
                                 "SequenceRNNOptions",
+                                "StridedSliceOptions",
                                 "DepthToSpaceOptions",
                                 "TransposeConvOptions",
                                 nullptr};
@@ -618,6 +628,11 @@ struct BuiltinOptionsTraits<SqueezeOptions> {
 template <>
 struct BuiltinOptionsTraits<SequenceRNNOptions> {
   static const BuiltinOptions enum_value = BuiltinOptions_SequenceRNNOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<StridedSliceOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_StridedSliceOptions;
 };
 
 template <>
@@ -985,6 +1000,16 @@ struct BuiltinOptionsUnion {
   const SequenceRNNOptionsT *AsSequenceRNNOptions() const {
     return type == BuiltinOptions_SequenceRNNOptions
                ? reinterpret_cast<const SequenceRNNOptionsT *>(value)
+               : nullptr;
+  }
+  StridedSliceOptionsT *AsStridedSliceOptions() {
+    return type == BuiltinOptions_StridedSliceOptions
+               ? reinterpret_cast<StridedSliceOptionsT *>(value)
+               : nullptr;
+  }
+  const StridedSliceOptionsT *AsStridedSliceOptions() const {
+    return type == BuiltinOptions_StridedSliceOptions
+               ? reinterpret_cast<const StridedSliceOptionsT *>(value)
                : nullptr;
   }
   DepthToSpaceOptionsT *AsDepthToSpaceOptions() {
@@ -2827,26 +2852,13 @@ flatbuffers::Offset<CallOptions> CreateCallOptions(
 
 struct PadOptionsT : public flatbuffers::NativeTable {
   typedef PadOptions TableType;
-  std::vector<int32_t> before_padding;
-  std::vector<int32_t> after_padding;
   PadOptionsT() {}
 };
 
 struct PadOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef PadOptionsT NativeTableType;
-  enum { VT_BEFORE_PADDING = 4, VT_AFTER_PADDING = 6 };
-  const flatbuffers::Vector<int32_t> *before_padding() const {
-    return GetPointer<const flatbuffers::Vector<int32_t> *>(VT_BEFORE_PADDING);
-  }
-  const flatbuffers::Vector<int32_t> *after_padding() const {
-    return GetPointer<const flatbuffers::Vector<int32_t> *>(VT_AFTER_PADDING);
-  }
   bool Verify(flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyOffset(verifier, VT_BEFORE_PADDING) &&
-           verifier.Verify(before_padding()) &&
-           VerifyOffset(verifier, VT_AFTER_PADDING) &&
-           verifier.Verify(after_padding()) && verifier.EndTable();
+    return VerifyTableStart(verifier) && verifier.EndTable();
   }
   PadOptionsT *UnPack(
       const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -2861,14 +2873,6 @@ struct PadOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 struct PadOptionsBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_before_padding(
-      flatbuffers::Offset<flatbuffers::Vector<int32_t>> before_padding) {
-    fbb_.AddOffset(PadOptions::VT_BEFORE_PADDING, before_padding);
-  }
-  void add_after_padding(
-      flatbuffers::Offset<flatbuffers::Vector<int32_t>> after_padding) {
-    fbb_.AddOffset(PadOptions::VT_AFTER_PADDING, after_padding);
-  }
   explicit PadOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
       : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -2882,22 +2886,9 @@ struct PadOptionsBuilder {
 };
 
 inline flatbuffers::Offset<PadOptions> CreatePadOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<int32_t>> before_padding = 0,
-    flatbuffers::Offset<flatbuffers::Vector<int32_t>> after_padding = 0) {
+    flatbuffers::FlatBufferBuilder &_fbb) {
   PadOptionsBuilder builder_(_fbb);
-  builder_.add_after_padding(after_padding);
-  builder_.add_before_padding(before_padding);
   return builder_.Finish();
-}
-
-inline flatbuffers::Offset<PadOptions> CreatePadOptionsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<int32_t> *before_padding = nullptr,
-    const std::vector<int32_t> *after_padding = nullptr) {
-  return tflite::CreatePadOptions(
-      _fbb, before_padding ? _fbb.CreateVector<int32_t>(*before_padding) : 0,
-      after_padding ? _fbb.CreateVector<int32_t>(*after_padding) : 0);
 }
 
 flatbuffers::Offset<PadOptions> CreatePadOptions(
@@ -3780,6 +3771,111 @@ flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const SqueezeOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
+struct StridedSliceOptionsT : public flatbuffers::NativeTable {
+  typedef StridedSliceOptions TableType;
+  int32_t begin_mask;
+  int32_t end_mask;
+  int32_t ellipsis_mask;
+  int32_t new_axis_mask;
+  int32_t shrink_axis_mask;
+  StridedSliceOptionsT()
+      : begin_mask(0),
+        end_mask(0),
+        ellipsis_mask(0),
+        new_axis_mask(0),
+        shrink_axis_mask(0) {}
+};
+
+struct StridedSliceOptions FLATBUFFERS_FINAL_CLASS
+    : private flatbuffers::Table {
+  typedef StridedSliceOptionsT NativeTableType;
+  enum {
+    VT_BEGIN_MASK = 4,
+    VT_END_MASK = 6,
+    VT_ELLIPSIS_MASK = 8,
+    VT_NEW_AXIS_MASK = 10,
+    VT_SHRINK_AXIS_MASK = 12
+  };
+  int32_t begin_mask() const { return GetField<int32_t>(VT_BEGIN_MASK, 0); }
+  int32_t end_mask() const { return GetField<int32_t>(VT_END_MASK, 0); }
+  int32_t ellipsis_mask() const {
+    return GetField<int32_t>(VT_ELLIPSIS_MASK, 0);
+  }
+  int32_t new_axis_mask() const {
+    return GetField<int32_t>(VT_NEW_AXIS_MASK, 0);
+  }
+  int32_t shrink_axis_mask() const {
+    return GetField<int32_t>(VT_SHRINK_AXIS_MASK, 0);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int32_t>(verifier, VT_BEGIN_MASK) &&
+           VerifyField<int32_t>(verifier, VT_END_MASK) &&
+           VerifyField<int32_t>(verifier, VT_ELLIPSIS_MASK) &&
+           VerifyField<int32_t>(verifier, VT_NEW_AXIS_MASK) &&
+           VerifyField<int32_t>(verifier, VT_SHRINK_AXIS_MASK) &&
+           verifier.EndTable();
+  }
+  StridedSliceOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      StridedSliceOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<StridedSliceOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const StridedSliceOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct StridedSliceOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_begin_mask(int32_t begin_mask) {
+    fbb_.AddElement<int32_t>(StridedSliceOptions::VT_BEGIN_MASK, begin_mask, 0);
+  }
+  void add_end_mask(int32_t end_mask) {
+    fbb_.AddElement<int32_t>(StridedSliceOptions::VT_END_MASK, end_mask, 0);
+  }
+  void add_ellipsis_mask(int32_t ellipsis_mask) {
+    fbb_.AddElement<int32_t>(StridedSliceOptions::VT_ELLIPSIS_MASK,
+                             ellipsis_mask, 0);
+  }
+  void add_new_axis_mask(int32_t new_axis_mask) {
+    fbb_.AddElement<int32_t>(StridedSliceOptions::VT_NEW_AXIS_MASK,
+                             new_axis_mask, 0);
+  }
+  void add_shrink_axis_mask(int32_t shrink_axis_mask) {
+    fbb_.AddElement<int32_t>(StridedSliceOptions::VT_SHRINK_AXIS_MASK,
+                             shrink_axis_mask, 0);
+  }
+  explicit StridedSliceOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  StridedSliceOptionsBuilder &operator=(const StridedSliceOptionsBuilder &);
+  flatbuffers::Offset<StridedSliceOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<StridedSliceOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<StridedSliceOptions> CreateStridedSliceOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, int32_t begin_mask = 0,
+    int32_t end_mask = 0, int32_t ellipsis_mask = 0, int32_t new_axis_mask = 0,
+    int32_t shrink_axis_mask = 0) {
+  StridedSliceOptionsBuilder builder_(_fbb);
+  builder_.add_shrink_axis_mask(shrink_axis_mask);
+  builder_.add_new_axis_mask(new_axis_mask);
+  builder_.add_ellipsis_mask(ellipsis_mask);
+  builder_.add_end_mask(end_mask);
+  builder_.add_begin_mask(begin_mask);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<StridedSliceOptions> CreateStridedSliceOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const StridedSliceOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
 struct OperatorCodeT : public flatbuffers::NativeTable {
   typedef OperatorCode TableType;
   BuiltinOperator builtin_code;
@@ -4064,6 +4160,11 @@ struct Operator FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
                ? static_cast<const SequenceRNNOptions *>(builtin_options())
                : nullptr;
   }
+  const StridedSliceOptions *builtin_options_as_StridedSliceOptions() const {
+    return builtin_options_type() == BuiltinOptions_StridedSliceOptions
+               ? static_cast<const StridedSliceOptions *>(builtin_options())
+               : nullptr;
+  }
   const DepthToSpaceOptions *builtin_options_as_DepthToSpaceOptions() const {
     return builtin_options_type() == BuiltinOptions_DepthToSpaceOptions
                ? static_cast<const DepthToSpaceOptions *>(builtin_options())
@@ -4279,6 +4380,12 @@ template <>
 inline const SequenceRNNOptions *
 Operator::builtin_options_as<SequenceRNNOptions>() const {
   return builtin_options_as_SequenceRNNOptions();
+}
+
+template <>
+inline const StridedSliceOptions *
+Operator::builtin_options_as<StridedSliceOptions>() const {
+  return builtin_options_as_StridedSliceOptions();
 }
 
 template <>
@@ -5308,11 +5415,11 @@ inline void SequenceRNNOptions::UnPackTo(
   {
     auto _e = time_major();
     _o->time_major = _e;
-  }
+  };
   {
     auto _e = fused_activation_function();
     _o->fused_activation_function = _e;
-  }
+  };
 }
 
 inline flatbuffers::Offset<SequenceRNNOptions> SequenceRNNOptions::Pack(
@@ -5778,24 +5885,6 @@ inline void PadOptions::UnPackTo(
     PadOptionsT *_o, const flatbuffers::resolver_function_t *_resolver) const {
   (void)_o;
   (void)_resolver;
-  {
-    auto _e = before_padding();
-    if (_e) {
-      _o->before_padding.resize(_e->size());
-      for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        _o->before_padding[_i] = _e->Get(_i);
-      }
-    }
-  };
-  {
-    auto _e = after_padding();
-    if (_e) {
-      _o->after_padding.resize(_e->size());
-      for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        _o->after_padding[_i] = _e->Get(_i);
-      }
-    }
-  };
 }
 
 inline flatbuffers::Offset<PadOptions> PadOptions::Pack(
@@ -5815,11 +5904,7 @@ inline flatbuffers::Offset<PadOptions> CreatePadOptions(
     const flatbuffers::rehasher_function_t *__rehasher;
   } _va = {&_fbb, _o, _rehasher};
   (void)_va;
-  auto _before_padding =
-      _o->before_padding.size() ? _fbb.CreateVector(_o->before_padding) : 0;
-  auto _after_padding =
-      _o->after_padding.size() ? _fbb.CreateVector(_o->after_padding) : 0;
-  return tflite::CreatePadOptions(_fbb, _before_padding, _after_padding);
+  return tflite::CreatePadOptions(_fbb);
 }
 
 inline ReshapeOptionsT *ReshapeOptions::UnPack(
@@ -6425,6 +6510,67 @@ inline flatbuffers::Offset<SqueezeOptions> CreateSqueezeOptions(
   return tflite::CreateSqueezeOptions(_fbb, _squeeze_dims);
 }
 
+inline StridedSliceOptionsT *StridedSliceOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new StridedSliceOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void StridedSliceOptions::UnPackTo(
+    StridedSliceOptionsT *_o,
+    const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = begin_mask();
+    _o->begin_mask = _e;
+  };
+  {
+    auto _e = end_mask();
+    _o->end_mask = _e;
+  };
+  {
+    auto _e = ellipsis_mask();
+    _o->ellipsis_mask = _e;
+  };
+  {
+    auto _e = new_axis_mask();
+    _o->new_axis_mask = _e;
+  };
+  {
+    auto _e = shrink_axis_mask();
+    _o->shrink_axis_mask = _e;
+  };
+}
+
+inline flatbuffers::Offset<StridedSliceOptions> StridedSliceOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const StridedSliceOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateStridedSliceOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<StridedSliceOptions> CreateStridedSliceOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const StridedSliceOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const StridedSliceOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _begin_mask = _o->begin_mask;
+  auto _end_mask = _o->end_mask;
+  auto _ellipsis_mask = _o->ellipsis_mask;
+  auto _new_axis_mask = _o->new_axis_mask;
+  auto _shrink_axis_mask = _o->shrink_axis_mask;
+  return tflite::CreateStridedSliceOptions(_fbb, _begin_mask, _end_mask,
+                                           _ellipsis_mask, _new_axis_mask,
+                                           _shrink_axis_mask);
+}
+
 inline OperatorCodeT *OperatorCode::UnPack(
     const flatbuffers::resolver_function_t *_resolver) const {
   auto _o = new OperatorCodeT();
@@ -6937,6 +7083,10 @@ inline bool VerifyBuiltinOptions(flatbuffers::Verifier &verifier,
       auto ptr = reinterpret_cast<const SequenceRNNOptions *>(obj);
       return verifier.VerifyTable(ptr);
     }
+    case BuiltinOptions_StridedSliceOptions: {
+      auto ptr = reinterpret_cast<const StridedSliceOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return verifier.VerifyTable(ptr);
@@ -7093,6 +7243,10 @@ inline void *BuiltinOptionsUnion::UnPack(
       auto ptr = reinterpret_cast<const SequenceRNNOptions *>(obj);
       return ptr->UnPack(resolver);
     }
+    case BuiltinOptions_StridedSliceOptions: {
+      auto ptr = reinterpret_cast<const StridedSliceOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptions *>(obj);
       return ptr->UnPack(resolver);
@@ -7235,6 +7389,10 @@ inline flatbuffers::Offset<void> BuiltinOptionsUnion::Pack(
     case BuiltinOptions_SequenceRNNOptions: {
       auto ptr = reinterpret_cast<const SequenceRNNOptionsT *>(value);
       return CreateSequenceRNNOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_StridedSliceOptions: {
+      auto ptr = reinterpret_cast<const StridedSliceOptionsT *>(value);
+      return CreateStridedSliceOptions(_fbb, ptr, _rehasher).Union();
     }
     case BuiltinOptions_DepthToSpaceOptions: {
       auto ptr = reinterpret_cast<const DepthToSpaceOptionsT *>(value);
@@ -7392,6 +7550,11 @@ inline BuiltinOptionsUnion::BuiltinOptionsUnion(const BuiltinOptionsUnion &u)
     case BuiltinOptions_SequenceRNNOptions: {
       value = new SequenceRNNOptionsT(
           *reinterpret_cast<SequenceRNNOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_StridedSliceOptions: {
+      value = new StridedSliceOptionsT(
+          *reinterpret_cast<StridedSliceOptionsT *>(u.value));
       break;
     }
     case BuiltinOptions_DepthToSpaceOptions: {
@@ -7563,6 +7726,11 @@ inline void BuiltinOptionsUnion::Reset() {
     }
     case BuiltinOptions_SequenceRNNOptions: {
       auto ptr = reinterpret_cast<SequenceRNNOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_StridedSliceOptions: {
+      auto ptr = reinterpret_cast<StridedSliceOptionsT *>(value);
       delete ptr;
       break;
     }

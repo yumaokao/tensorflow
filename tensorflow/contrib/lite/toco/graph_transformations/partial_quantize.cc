@@ -374,7 +374,7 @@ bool QuantizeInputsAndOutputs(
               model->flags.set_output_arrays(i, dequantize_op->inputs[0]);
             }
           }
-          model->arrays.erase(dequantize_op->outputs[0]);
+          model->EraseArray(dequantize_op->outputs[0]);
           model->operators.erase(dequantize_it);
         }
       }

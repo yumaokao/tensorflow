@@ -511,19 +511,11 @@ class Pad : public BuiltinOperator<PadOperator, ::tflite::PadOptions,
   flatbuffers::Offset<TfLiteOptions> WriteOptions(
       const TocoOperator& op,
       flatbuffers::FlatBufferBuilder* builder) const override {
-    auto before_padding = builder->CreateVector(op.left_padding);
-    auto after_padding = builder->CreateVector(op.right_padding);
-    return ::tflite::CreatePadOptions(*builder, before_padding, after_padding);
+    return ::tflite::CreatePadOptions(*builder);
   }
 
   void ReadOptions(const TfLiteOptions& options,
                    TocoOperator* op) const override {
-    op->left_padding.insert(op->left_padding.end(),
-                            options.before_padding()->begin(),
-                            options.before_padding()->end());
-    op->right_padding.insert(op->right_padding.end(),
-                             options.after_padding()->begin(),
-                             options.after_padding()->end());
   }
 };
 
@@ -672,6 +664,30 @@ class Split : public CustomOperator<TensorFlowSplitOperator> {
   }
   void ReadOptions(const flexbuffers::Map& m, TocoOperator* op) const override {
     op->num_split = m["num_split"].AsInt64();
+  }
+};
+
+class StridedSlice
+    : public BuiltinOperator<StridedSliceOperator,
+                             ::tflite::StridedSliceOptions,
+                             ::tflite::BuiltinOptions_StridedSliceOptions> {
+ public:
+  using BuiltinOperator::BuiltinOperator;
+  flatbuffers::Offset<TfLiteOptions> WriteOptions(
+      const TocoOperator& op,
+      flatbuffers::FlatBufferBuilder* builder) const override {
+    return ::tflite::CreateStridedSliceOptions(
+        *builder, op.begin_mask, op.end_mask, op.ellipsis_mask,
+        op.new_axis_mask, op.shrink_axis_mask);
+  }
+
+  void ReadOptions(const TfLiteOptions& options,
+                   TocoOperator* op) const override {
+    op->begin_mask = options.begin_mask();
+    op->end_mask = options.end_mask();
+    op->ellipsis_mask = options.ellipsis_mask();
+    op->new_axis_mask = options.new_axis_mask();
+    op->shrink_axis_mask = options.shrink_axis_mask();
   }
 };
 
@@ -839,6 +855,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       new Mean(::tflite::BuiltinOperator_MEAN, OperatorType::kMean));
   ops.emplace_back(
       new Squeeze(::tflite::BuiltinOperator_SQUEEZE, OperatorType::kSqueeze));
+  ops.emplace_back(new StridedSlice(::tflite::BuiltinOperator_STRIDED_SLICE,
+                                    OperatorType::kStridedSlice));
 
   // Add BuiltinOp
   ops.emplace_back(
@@ -853,6 +871,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
 
   // There operators are supported by Toco, but not by TF Lite, and has no
   // attributes.
+  ops.emplace_back(
+      new SimpleOperator<AddNOperator>("ADDN", OperatorType::kAddN));
   ops.emplace_back(new SimpleOperator<NegOperator>("NEG", OperatorType::kNeg));
   ops.emplace_back(new SimpleOperator<TensorFlowRsqrtOperator>(
       "RSQRT", OperatorType::kTensorFlowRsqrt));
