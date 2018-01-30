@@ -700,6 +700,39 @@ void ProcessMaxPoolOperator(Model* model, MaxPoolOperator* op) {
   if (!input_array.has_shape()) {
     return;
   }
+  // Resolve ksize and strides in MaxPoolV2 have been resolved
+  if (op->inputs.size() == 3) {
+    const string& ksize_name = op->inputs[1];
+    const auto& ksize_array = model->GetArray(ksize_name);
+    CHECK(ksize_array.data_type == ArrayDataType::kInt32);
+    CHECK(ksize_array.has_shape());
+    const auto& ksize_shape = ksize_array.shape();
+    CHECK_EQ(ksize_shape.dimensions_count(), 1);
+    CHECK_EQ(ksize_shape.dims(0), 4);
+    if (!ksize_array.buffer) {
+      return;
+    }
+    std::vector<int32> ksize =
+        ksize_array.GetBuffer<ArrayDataType::kInt32>().data;
+    op->kheight = ksize[1];
+    op->kwidth = ksize[2];
+
+    const string& strides_name = op->inputs[2];
+    const auto& strides_array = model->GetArray(strides_name);
+    CHECK(strides_array.data_type == ArrayDataType::kInt32);
+    CHECK(strides_array.has_shape());
+    const auto& strides_shape = strides_array.shape();
+    CHECK_EQ(strides_shape.dimensions_count(), 1);
+    CHECK_EQ(strides_shape.dims(0), 4);
+    if (!strides_array.buffer) {
+      return;
+    }
+    std::vector<int32> strides =
+        strides_array.GetBuffer<ArrayDataType::kInt32>().data;
+    op->stride_height = strides[1];
+    op->stride_width = strides[2];
+  }
+
   const auto& input_shape = input_array.shape();
   CHECK_EQ(input_shape.dimensions_count(), 4);
   const string& output_name = op->outputs[0];

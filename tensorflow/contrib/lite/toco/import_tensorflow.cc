@@ -901,8 +901,12 @@ void ConvertLRNOperator(const NodeDef& node,
 void ConvertMaxPoolOperator(const NodeDef& node,
                             const TensorFlowImportFlags& tf_import_flags,
                             Model* model) {
-  CHECK_EQ(node.op(), "MaxPool");
-  CheckInputsCount(node, tf_import_flags, 1);
+  CHECK(node.op() == "MaxPool" || node.op() == "MaxPoolV2");
+  if (node.op() == "MaxPool") {
+    CheckInputsCount(node, tf_import_flags, 1);
+  } else if (node.op() == "MaxPoolV2") {
+    CheckInputsCount(node, tf_import_flags, 3);
+  }
   const auto& input_name = node.input(0);
   // We only support NHWC, which is the default data_format.
   // So if data_format is not defined, we're all good.
@@ -917,18 +921,29 @@ void ConvertMaxPoolOperator(const NodeDef& node,
   auto* maxpool = new MaxPoolOperator;
   maxpool->inputs.push_back(input_name);
   maxpool->outputs.push_back(node.name());
-  const auto& strides = GetListAttr(node, "strides");
-  CHECK_EQ(strides.i_size(), 4);
-  CHECK_EQ(strides.i(0), 1);
-  CHECK_EQ(strides.i(3), 1);
-  maxpool->stride_height = strides.i(1);
-  maxpool->stride_width = strides.i(2);
-  const auto& ksize = GetListAttr(node, "ksize");
-  CHECK_EQ(ksize.i_size(), 4);
-  CHECK_EQ(ksize.i(0), 1);
-  CHECK_EQ(ksize.i(3), 1);
-  maxpool->kheight = ksize.i(1);
-  maxpool->kwidth = ksize.i(2);
+  if (node.op() == "MaxPoolV2") {
+    maxpool->inputs.push_back(node.input(1));
+    maxpool->inputs.push_back(node.input(2));
+  }
+
+  // Attrs strides and ksize only in MaxPool
+  // Will be resolved layer for MaxPoolV2
+  if (HasAttr(node, "strides")) {
+    const auto& strides = GetListAttr(node, "strides");
+    CHECK_EQ(strides.i_size(), 4);
+    CHECK_EQ(strides.i(0), 1);
+    CHECK_EQ(strides.i(3), 1);
+    maxpool->stride_height = strides.i(1);
+    maxpool->stride_width = strides.i(2);
+  }
+  if (HasAttr(node, "ksize")) {
+    const auto& ksize = GetListAttr(node, "ksize");
+    CHECK_EQ(ksize.i_size(), 4);
+    CHECK_EQ(ksize.i(0), 1);
+    CHECK_EQ(ksize.i(3), 1);
+    maxpool->kheight = ksize.i(1);
+    maxpool->kwidth = ksize.i(2);
+  }
   const auto& padding = GetStringAttr(node, "padding");
   if (padding == "SAME") {
     maxpool->padding.type = PaddingType::kSame;
@@ -1939,7 +1954,7 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertLogisticOperator(node, tf_import_flags, model);
     } else if (node.op() == "Tanh") {
       ConvertTanhOperator(node, tf_import_flags, model);
-    } else if (node.op() == "MaxPool") {
+    } else if (node.op() == "MaxPool" || node.op() == "MaxPoolV2") {
       ConvertMaxPoolOperator(node, tf_import_flags, model);
     } else if (node.op() == "AvgPool") {
       ConvertAvgPoolOperator(node, tf_import_flags, model);
