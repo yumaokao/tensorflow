@@ -214,7 +214,6 @@ cc_library(
         "graph_transformations/resolve_constant_fake_quant.cc",
         "graph_transformations/resolve_constant_dequantize.cc",
         "graph_transformations/resolve_constant_quantize.cc",
-        "graph_transformations/resolve_constant_resize_bilinear.cc",
         "graph_transformations/resolve_constant_fill.cc",
         "graph_transformations/resolve_constant_range.cc",
         "graph_transformations/resolve_constant_shape_or_rank.cc",
