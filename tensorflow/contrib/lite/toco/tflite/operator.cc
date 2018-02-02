@@ -490,27 +490,6 @@ class Pad : public BuiltinOperator<PadOperator, ::tflite::PadOptions,
                    TocoOperator* op) const override {}
 };
 
-class ResizeBilinear
-    : public BuiltinOperator<ResizeBilinearOperator,
-                             ::tflite::ResizeBilinearOptions,
-                             ::tflite::BuiltinOptions_ResizeBilinearOptions> {
- public:
-  using BuiltinOperator::BuiltinOperator;
-
-  flatbuffers::Offset<TfLiteOptions> WriteOptions(
-      const TocoOperator& op,
-      flatbuffers::FlatBufferBuilder* builder) const override {
-    return ::tflite::CreateResizeBilinearOptions(*builder,
-                                                 op.new_height, op.new_width);
-  }
-
-  void ReadOptions(const TfLiteOptions& options,
-                   TocoOperator* op) const override {
-      op->new_height = options.new_height();
-      op->new_width = options.new_width();
-  }
-};
-
 class Reshape
     : public BuiltinOperator<TensorFlowReshapeOperator,
                              ::tflite::ReshapeOptions,
@@ -801,8 +780,6 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
                                OperatorType::kMaxPool));
   ops.emplace_back(new Mul(::tflite::BuiltinOperator_MUL, OperatorType::kMul));
   ops.emplace_back(new Pad(::tflite::BuiltinOperator_PAD, OperatorType::kPad));
-  ops.emplace_back(new ResizeBilinear(::tflite::BuiltinOperator_RESIZE_BILINEAR,
-                               OperatorType::kResizeBilinear));
   ops.emplace_back(new Reshape(::tflite::BuiltinOperator_RESHAPE,
                                OperatorType::kTensorFlowReshape));
   ops.emplace_back(
@@ -853,6 +830,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       new SimpleOperator<Relu1Operator>("RELU_N1_TO_1", OperatorType::kRelu1));
   ops.emplace_back(
       new SimpleOperator<Relu6Operator>("RELU6", OperatorType::kRelu6));
+  ops.emplace_back(new SimpleOperator<ResizeBilinearOperator>(
+      "RESIZE_BILINEAR", OperatorType::kResizeBilinear));
   ops.emplace_back(new SimpleOperator<LogisticOperator>(
       "LOGISTIC", OperatorType::kLogistic));
   ops.emplace_back(
