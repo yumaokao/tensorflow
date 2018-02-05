@@ -2333,6 +2333,9 @@ inline void Dequantize(const uint8* input_data, const Dims<4>& input_dims,
 inline void Quantize(const float* input_data, const Dims<4>& input_dims,
                        int32 zero_point, double scale, uint8* output_data,
                        const Dims<4>& output_dims) {
+  using Integer = uint8;
+  const Integer qmin = std::numeric_limits<Integer>::min();
+  const Integer qmax = std::numeric_limits<Integer>::max();
   const int batches = MatchingArraySize(input_dims, 3, output_dims, 3);
   const int height = MatchingArraySize(input_dims, 2, output_dims, 2);
   const int width = MatchingArraySize(input_dims, 1, output_dims, 1);
@@ -2343,6 +2346,7 @@ inline void Quantize(const float* input_data, const Dims<4>& input_dims,
         for (int c = 0; c < depth; ++c) {
           float val = input_data[Offset(input_dims, c, x, y, b)];
           val = TfLiteRound(val/scale) + zero_point;
+          val = std::max(std::min(val, float(qmax)), float(qmin));
           uint8_t result = static_cast<uint8_t>(val);
           output_data[Offset(output_dims, c, x, y, b)] = result;
         }

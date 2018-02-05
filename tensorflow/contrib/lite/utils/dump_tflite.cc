@@ -31,7 +31,9 @@ void FATAL(const char* format, ...) {
 
 void Dump(const char* filename) {
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
-  if (!model) FATAL("Cannot read file %s\n", filename);
+  if (!model || !model->CheckModelIdentifier()) {
+    FATAL("Cannot read file %s\n", filename);
+  }
 
   auto model_ = model->GetModel();
   auto* subgraphs = model_->subgraphs();

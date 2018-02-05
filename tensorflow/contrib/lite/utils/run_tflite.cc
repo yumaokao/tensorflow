@@ -56,7 +56,7 @@ class TFLiteRunner {
   public:
     TFLiteRunner(const string tflite_file, const bool use_nnapi)
       : m_tflite_file(tflite_file), m_use_nnapi(use_nnapi) {}
-    TfLiteStatus Run(const string batch_xs, const string batch_ys);
+    TfLiteStatus Run(const string batch_xs, const string batch_ys, const int output_tensor_idx);
 
   private:
     const string m_tflite_file;
@@ -70,12 +70,15 @@ class TFLiteRunner {
 };
 
 template <typename T>
-TfLiteStatus TFLiteRunner<T>::Run(const string batch_xs, const string batch_ys) {
+TfLiteStatus TFLiteRunner<T>::Run(const string batch_xs, const string batch_ys, const int output_tensor_idx) {
   auto model = tflite::FlatBufferModel::BuildFromFile(m_tflite_file.c_str());
   tflite::ops::builtin::BuiltinOpResolver builtins;
   CHECK_TFLITE_SUCCESS(
       tflite::InterpreterBuilder(*model, builtins)(&m_interpreter));
   m_interpreter->UseNNAPI(m_use_nnapi);
+  if (output_tensor_idx != -1) {
+    m_interpreter->SetOutputs({output_tensor_idx});
+  }
 
   // Reshape with batch
   TF_LITE_ENSURE_STATUS(ReshapeInputs(batch_xs.c_str()));
@@ -189,13 +192,15 @@ int main(int argc, char* argv[]) {
   string tflite_file = "";
   string batch_xs = "";
   string batch_ys = "";
+  int output_tensor_idx = -1;
   bool use_nnapi = true;
   string inference_type = "float";
   std::vector<Flag> flag_list = {
-	Flag("tflite_file", &tflite_file, "tflite filename to be invoked (Must)"),
-	Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
-	Flag("batch_ys", &batch_ys, "batch_xy npy file to be saved as outputs (Must)"),
+    Flag("tflite_file", &tflite_file, "tflite filename to be invoked (Must)"),
+    Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
+    Flag("batch_ys", &batch_ys, "batch_xy npy file to be saved as outputs (Must)"),
     Flag("use_nnapi", &use_nnapi, "use nn api i.e. 0,1"),
+    Flag("output_tensor_idx", &output_tensor_idx, "index of the output tensor defined in the tflite model"),
     Flag("inference_type", &inference_type, "inference type: float, uint8"),
   };
   string usage = tensorflow::Flags::Usage(argv[0], flag_list);
@@ -214,10 +219,10 @@ int main(int argc, char* argv[]) {
   TfLiteStatus result = kTfLiteError;
   if (inference_type == "float") {
     TFLiteRunner<float> runner(tflite_file, use_nnapi);
-    result = runner.Run(batch_xs, batch_ys);
+    result = runner.Run(batch_xs, batch_ys, output_tensor_idx);
   } else if (inference_type == "uint8") {
     TFLiteRunner<uint8_t> runner(tflite_file, use_nnapi);
-    result = runner.Run(batch_xs, batch_ys);
+    result = runner.Run(batch_xs, batch_ys, output_tensor_idx);
   }
 
   return result;
