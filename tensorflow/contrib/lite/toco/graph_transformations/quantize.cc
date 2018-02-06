@@ -48,7 +48,8 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kResizeBilinear ||
          type == OperatorType::kMean ||
          type == OperatorType::kDepthToSpace ||
-         type == OperatorType::kTransposeConv;
+         type == OperatorType::kTransposeConv ||
+         type == OperatorType::kPRelu;
 }
 
 template <ArrayDataType A>

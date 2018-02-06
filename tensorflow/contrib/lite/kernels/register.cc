@@ -63,6 +63,7 @@ TfLiteRegistration* Register_STRIDED_SLICE();
 TfLiteRegistration* Register_DEQUANTIZE();
 TfLiteRegistration* Register_QUANTIZE();
 TfLiteRegistration* Register_TRANSPOSE_CONV();
+TfLiteRegistration* Register_PRELU();
 
 BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_RELU, Register_RELU());
@@ -114,6 +115,7 @@ BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_DEQUANTIZE, Register_DEQUANTIZE());
   AddBuiltin(BuiltinOperator_QUANTIZE, Register_QUANTIZE());
   AddBuiltin(BuiltinOperator_TRANSPOSE_CONV, Register_TRANSPOSE_CONV());
+  AddBuiltin(BuiltinOperator_PRELU, Register_PRELU());
 }
 
 TfLiteRegistration* BuiltinOpResolver::FindOp(

@@ -122,6 +122,9 @@ enum class OperatorType {
   // instead of being given as plain constant arrays. So we need to insert
   // special nodes in the graph to shuffle axes.
   kReorderAxes,
+  // For PRelu
+  kTensorFlowAbs,
+  kPRelu
 };
 
 // Helper to deal with TensorFlow arrays using a different ordering of
@@ -948,6 +951,34 @@ struct NegOperator : Operator {
 struct TensorFlowRsqrtOperator : Operator {
   TensorFlowRsqrtOperator() : Operator(OperatorType::kTensorFlowRsqrt) {}
 };
+
+// Element-wise Abs Operator
+// Temp Op for PRelu transformation
+// Remove After Resolve_PRelu
+// Need To Add Abs-Kernel if there's other usage.
+//
+// Inputs:
+//   inputs[0]: required: the input array
+//
+// TensorFlow equivalent: Abs
+struct TensorFlowAbsOperator : Operator {
+  TensorFlowAbsOperator() : Operator(OperatorType::kTensorFlowAbs) {}
+};
+
+
+// Element-wise PRelu operator:
+// 
+//
+// Inputs:
+//   inputs[0]: required: the left-hand side array
+//   inputs[1]: required: the right-hand side array
+//
+struct PReluOperator : Operator {
+  PReluOperator() : Operator(OperatorType::kPRelu) {}
+};
+
+
+
 
 // Stacks a list of rank-R tensors into one rank-(R+1) tensor.
 //

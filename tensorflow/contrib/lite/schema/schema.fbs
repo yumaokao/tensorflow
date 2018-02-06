@@ -122,6 +122,7 @@ enum BuiltinOperator : byte {
   BIDIRECTIONAL_SEQUENCE_RNN = 46,
   QUANTIZE = 50,
   TRANSPOSE_CONV = 51,
+  PRELU = 52,
 }
 
 // Options for the builtin operators.

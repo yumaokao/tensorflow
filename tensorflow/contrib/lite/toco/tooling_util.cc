@@ -290,6 +290,8 @@ const char* OperatorTypeName(OperatorType type) {
     HANDLE_OPERATORTYPENAME_CASE(Mean)
     HANDLE_OPERATORTYPENAME_CASE(Svdf)
     HANDLE_OPERATORTYPENAME_CASE(ArgMax)
+    HANDLE_OPERATORTYPENAME_CASE(TensorFlowAbs)
+    HANDLE_OPERATORTYPENAME_CASE(PRelu)
     HANDLE_OPERATORTYPENAME_CASE(TensorFlowUnsupported)
     default:
       LOG(FATAL) << "Unhandled op type";

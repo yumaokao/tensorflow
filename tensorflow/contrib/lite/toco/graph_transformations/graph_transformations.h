@@ -173,6 +173,7 @@ DECLARE_GRAPH_TRANSFORMATION(ResolveConstantStack)
 DECLARE_GRAPH_TRANSFORMATION(ResolveConstantStridedSlice)
 DECLARE_GRAPH_TRANSFORMATION(ResolveConstantFill)
 DECLARE_GRAPH_TRANSFORMATION(Dequantize)
+DECLARE_GRAPH_TRANSFORMATION(ResolvePRelu)
 
 class ResolveReshapeAttributes : public GraphTransformation {
  public:

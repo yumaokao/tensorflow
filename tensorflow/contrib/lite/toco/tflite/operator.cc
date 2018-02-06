@@ -817,7 +817,11 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
   ops.emplace_back(new SimpleOperator<NegOperator>("NEG", OperatorType::kNeg));
   ops.emplace_back(new SimpleOperator<TensorFlowRsqrtOperator>(
       "RSQRT", OperatorType::kTensorFlowRsqrt));
+  ops.emplace_back(new SimpleOperator<PReluOperator>(
+      "PRELU", OperatorType::kPRelu));
   // Simple Operators.
+  ops.emplace_back(new SimpleOperator<TensorFlowAbsOperator>(
+      "ABS", OperatorType::kTensorFlowAbs));
   ops.emplace_back(new SimpleOperator<DequantizeOperator>(
       "DEQUANTIZE", OperatorType::kDequantize));
   ops.emplace_back(new SimpleOperator<QuantizeOperator>(

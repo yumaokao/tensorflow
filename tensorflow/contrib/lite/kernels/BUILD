@@ -138,6 +138,7 @@ cc_library(
 	"dequantize.cc",
 	"quantize.cc",
 	"transpose_conv.cc",
+	"prelu.cc",
     ],
     hdrs = [
         "padding.h",

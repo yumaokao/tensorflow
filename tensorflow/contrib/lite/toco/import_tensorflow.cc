@@ -664,6 +664,17 @@ void ConvertNegOperator(const NodeDef& node,
   model->operators.emplace_back(op);
 }
 
+void ConvertAbsOperator(const NodeDef& node,
+                        const TensorFlowImportFlags& tf_import_flags,
+                        Model* model) {
+  CHECK_EQ(node.op(), "Abs");
+  CheckInputsCount(node, tf_import_flags, 1);
+  auto* op = new TensorFlowAbsOperator;
+  op->inputs.push_back(node.input(0));
+  op->outputs.push_back(node.name());
+  model->operators.emplace_back(op);
+}
+
 void ConvertRsqrtOperator(const NodeDef& node,
                           const TensorFlowImportFlags& tf_import_flags,
                           Model* model) {
@@ -2087,6 +2098,8 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertArgMaxOperator(node, tf_import_flags, model);
     } else if (node.op() == "QuantizeV2") {
       ConvertQuantizeV2Operator(node, tf_import_flags, model);
+    } else if (node.op() == "Abs") {
+      ConvertAbsOperator(node, tf_import_flags, model);
     } else {
       ConvertUnsupportedOperator(node, tf_import_flags, model);
     }
