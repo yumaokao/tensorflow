@@ -170,6 +170,8 @@ cc_library(
 cc_library(
     name = "optimized",
     hdrs = [
+        "optimized/cblas_conv.h",
+        "optimized/cblas_reference.h",
         "optimized/eigen_spatial_convolutions.h",
         "optimized/eigen_tensor_reduced_instantiations_oss.h",
         "optimized/multithreaded_conv.h",
@@ -294,6 +296,16 @@ cc_library(
 )
 
 cc_library(
+    name = "kernel_utils",
+    srcs = ["kernel_utils.cc"],
+    hdrs = ["kernel_utils.h"],
+    deps = [
+        ":tensor_utils",
+        "//tensorflow/contrib/lite:builtin_op_data",
+    ],
+)
+
+cc_library(
     name = "tensor_utils",
     srcs = [
         "tensor_utils.cc",
@@ -337,6 +349,9 @@ cc_library(
             ":neon_tensor_utils",
         ],
         ":x86": [
+            ":neon_tensor_utils",
+        ],
+        ":k8": [
             ":neon_tensor_utils",
         ],
         ":darwin": [

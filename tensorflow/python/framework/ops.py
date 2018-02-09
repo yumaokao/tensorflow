@@ -1618,7 +1618,7 @@ class Operation(object):
           for i, x in zip(inputs, input_types)):
         raise TypeError("In op '%s', input types (%s) are not compatible "
                         "with expected types (%s)" %
-                        (self.node_def.name, [i.dtype for i in inputs],
+                        (node_def.name, [i.dtype for i in inputs],
                          input_types))
 
     # Build the list of control inputs.
@@ -1657,7 +1657,7 @@ class Operation(object):
       self._c_op = c_op
     elif self._graph._c_graph:  # pylint: disable=protected-access
       if op_def is None:
-        op_def = self._graph._registered_ops[node_def.op]
+        op_def = self._graph._get_op_def(node_def.op)
       # TODO(skyewm): op_def_library.apply_op() flattens the incoming inputs.
       # Refactor so we don't have to do this here.
       grouped_inputs = self._reconstruct_sequence_inputs(
@@ -2164,16 +2164,7 @@ class Operation(object):
     """
     # pylint: enable=line-too-long
     if self._c_op:
-      with c_api_util.tf_buffer() as buf:
-        with errors.raise_exception_on_not_ok_status() as status:
-          # pylint: disable=protected-access
-          c_api.TF_GraphGetOpDef(self._graph._c_graph,
-                                 compat.as_bytes(self.type), buf, status)
-          # pylint: enable=protected-access
-        data = c_api.TF_GetBuffer(buf)
-      op_def = op_def_pb2.OpDef()
-      op_def.ParseFromString(compat.as_bytes(data))
-      return op_def
+      return self._graph._get_op_def(self.type)
     else:
       return self._op_def_val
 
@@ -2760,15 +2751,12 @@ class Graph(object):
     self._handle_movers = {}
     # A map from tensor handle to its delete op.
     self._handle_deleters = {}
-    # Resource container.
-    if context.in_graph_mode():
-      self._container_prefix = ""
-    else:
-      # In Eager mode, isolate resources (particularly ResourceVariables) in
-      # Graphs by default. This prevents unintended variable sharing. Graph mode
-      # gets this kind of isolation from Sessions.
-      self._container_prefix = "eager-execution-%d/" % (uid(),)
-    self._container = self._container_prefix
+    # Allow optimizers and other objects to pseudo-uniquely key graphs (this key
+    # will be shared when defining function graphs, for example, so optimizers
+    # being called inside function definitions behave as if they were seeing the
+    # actual outside graph).
+    self._graph_key = "grap-key-%d/" % (uid(),)
+    self._container = ""
     self._registered_ops = op_def_registry.get_registered_ops()
 
     # TODO(skyewm): fold as much of the above as possible into the C
@@ -3380,8 +3368,8 @@ class Graph(object):
     # (2) "is_stateful" is set in OpDef
     # (3) "container" attribute is in OpDef
     # (4) "container" attribute is None
-    if (self._container and op.type in self._registered_ops and
-        self._registered_ops[op.type].is_stateful):
+    # TODO(skyewm): remove op.op_def check when _USE_C_API is removed.
+    if self._container and op.op_def and op.op_def.is_stateful:
       try:
         container_attr = op.get_attr("container")
       except ValueError:
@@ -3660,6 +3648,22 @@ class Graph(object):
   @property
   def _last_id(self):
     return self._next_id_counter
+
+  def _get_op_def(self, type):
+    """Returns the `OpDef` proto for `type`. `type` is a string."""
+    if self._c_graph:
+      with c_api_util.tf_buffer() as buf:
+        with errors.raise_exception_on_not_ok_status() as status:
+          # pylint: disable=protected-access
+          c_api.TF_GraphGetOpDef(self._c_graph,
+                                 compat.as_bytes(type), buf, status)
+          # pylint: enable=protected-access
+        data = c_api.TF_GetBuffer(buf)
+      op_def = op_def_pb2.OpDef()
+      op_def.ParseFromString(compat.as_bytes(data))
+      return op_def
+    else:
+      return self._registered_ops[type]
 
   def as_default(self):
     """Returns a context manager that makes this `Graph` the default graph.
@@ -4229,7 +4233,7 @@ class Graph(object):
     """
     original_container = self._container
     try:
-      self._container = self._container_prefix + container_name
+      self._container = container_name
       yield self._container
     finally:
       self._container = original_container

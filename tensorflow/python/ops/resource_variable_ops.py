@@ -348,9 +348,9 @@ class ResourceVariable(variables.Variable):
     if trainable and ops.GraphKeys.TRAINABLE_VARIABLES not in collections:
       collections = list(collections) + [ops.GraphKeys.TRAINABLE_VARIABLES]
     self._save_slice_info = None
-    # Save the graph's container prefix for error checking. Reading the value of
-    # the ResourceVariable from another Graph in Eager mode is an error.
-    self._container_prefix = ops.get_default_graph()._container_prefix  # pylint: disable=protected-access
+    # Store the graph key so optimizers know how to only retrieve variables from
+    # this graph.
+    self._graph_key = ops.get_default_graph()._graph_key  # pylint: disable=protected-access
     with ops.init_scope():
       self._in_graph_mode = context.in_graph_mode()
       with ops.name_scope(name, "Variable", []
@@ -503,6 +503,14 @@ class ResourceVariable(variables.Variable):
     self._initializer_op = g.as_graph_element(
         ops.prepend_name_scope(
             variable_def.initializer_name, import_scope=import_scope))
+    # Check whether initial_value_name exists for backwards compatibility.
+    if (hasattr(variable_def, "initial_value_name") and
+        variable_def.initial_value_name):
+      self._initial_value = g.as_graph_element(
+          ops.prepend_name_scope(variable_def.initial_value_name,
+                                 import_scope=import_scope))
+    else:
+      self._initial_value = None
     if variable_def.snapshot_name:
       self._cached_value = g.as_graph_element(
           ops.prepend_name_scope(
@@ -662,15 +670,7 @@ class ResourceVariable(variables.Variable):
 
     Returns:
      the read operation.
-    Raises:
-      ValueError: if the ResourceVariable was created in another isolation
-        environment or graph.
     """
-    if (not self._in_graph_mode and
-        self._container_prefix != ops.get_default_graph()._container_prefix):  # pylint: disable=protected-access
-      raise ValueError(
-          "Attempted to read a variable from another isolation environment"
-          " or Graph")
     with ops.name_scope("Read"):
       # Ensure we read the variable in the same device as the handle.
       with ops.device(self._handle_device):
@@ -707,6 +707,12 @@ class ResourceVariable(variables.Variable):
       var_def = variable_pb2.VariableDef()
       var_def.variable_name = ops.strip_name_scope(self.handle.name,
                                                    export_scope)
+      if self._initial_value is not None:
+        # This is inside an if-statement for backwards compatibility, since
+        # self._initial_value might be None for variables constructed from old
+        # protos.
+        var_def.initial_value_name = ops.strip_name_scope(
+            self._initial_value.name, export_scope)
       var_def.initializer_name = ops.strip_name_scope(self.initializer.name,
                                                       export_scope)
       if self._cached_value is not None:

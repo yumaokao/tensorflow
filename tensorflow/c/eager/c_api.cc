@@ -25,6 +25,9 @@ limitations under the License.
 #include "tensorflow/c/c_api_internal.h"
 #include "tensorflow/c/eager/c_api_internal.h"
 #include "tensorflow/c/eager/runtime.h"
+#ifdef TENSORFLOW_EAGER_USE_XLA
+#include "tensorflow/compiler/tf2xla/xla_op_registry.h"
+#endif  // TENSORFLOW_EAGER_USE_XLA
 #include "tensorflow/core/common_runtime/copy_tensor.h"
 #include "tensorflow/core/common_runtime/device_factory.h"
 #include "tensorflow/core/common_runtime/device_mgr.h"
@@ -46,6 +49,12 @@ using tensorflow::string;
 namespace {
 bool IsCPU(tensorflow::Device* d) {
   return d == nullptr || d->tensorflow_gpu_device_info() == nullptr;
+}
+
+bool IsXLA(tensorflow::Device* d) {
+  if (d == nullptr) return false;
+  const auto& device_type = d->attributes().device_type();
+  return device_type.find("XLA") != std::string::npos;
 }
 
 string DeviceName(tensorflow::Device* d) {
@@ -183,7 +192,10 @@ TFE_TensorHandle* TFE_TensorHandleCopyToDevice(TFE_TensorHandle* h,
       (srcd == dstd) || (DeviceName(srcd) == DeviceName(dstd));
   const bool dst_cpu = IsCPU(dstd);
   const bool src_cpu = IsCPU(srcd);
-  if (is_same_device) {
+  // both_on_cpu can be true and yet is_same_device is false, if one of src/dst
+  // has device type XLA_CPU, and the other CPU.
+  const bool both_on_cpu = src_cpu && dst_cpu;
+  if (is_same_device || both_on_cpu) {
     return new TFE_TensorHandle(h->t, dst_cpu ? nullptr : dstd);
   }
   tensorflow::Tensor* src = &(h->t);
@@ -253,15 +265,6 @@ TFE_Op* TFE_NewOp(TFE_Context* ctx, const char* op_or_function_name,
 
 void TFE_DeleteOp(TFE_Op* op) { delete op; }
 
-static void TFE_OpSetDeviceHelper(TFE_Op* op, tensorflow::Device* device,
-                                  TF_Status* status) {
-  // Questionable heuristic: Place the op on the same device as the first input
-  // placed outside of host memory?
-  if (IsCPU(op->device) && !IsCPU(device)) {
-    op->device = device;
-  }
-}
-
 void TFE_OpSetDevice(TFE_Op* op, const char* device_name, TF_Status* status) {
   tensorflow::Device* d = nullptr;
   if (device_name != nullptr && strlen(device_name) > 0) {
@@ -269,11 +272,24 @@ void TFE_OpSetDevice(TFE_Op* op, const char* device_name, TF_Status* status) {
         op->ctx->session->device_mgr->LookupDevice(device_name, &d);
     if (!status->status.ok()) return;
   }
-  TFE_OpSetDeviceHelper(op, d, status);
+  op->device = d;
+}
+
+const char* TFE_OpGetDevice(TFE_Op* op, TF_Status* status) {
+  tensorflow::Device* device =
+      (op->device == nullptr) ? op->ctx->devices()[0] : op->device;
+  return device->name().c_str();
 }
 
 void TFE_OpAddInput(TFE_Op* op, TFE_TensorHandle* h, TF_Status* status) {
-  TFE_OpSetDeviceHelper(op, h->d, status);
+  // Questionable heuristic ...
+  //
+  // Motivation: After an 'op' is placed on GPU because some of its earlier
+  // inputs are on GPU, we want to keep the 'op' there, even if some later
+  // inputs of it are not on GPU.
+  if (IsCPU(op->device) && !IsCPU(h->d)) {
+    op->device = h->d;
+  }
   if (!status->status.ok()) return;
   op->inputs.push_back(h->t);
   op->input_devices.push_back(h->d);
@@ -290,7 +306,7 @@ TF_AttrType TFE_OpGetAttrType(TFE_Op* op, const char* attr_name,
     return TF_ATTR_INT;  // The compiler requires that we return something.
   }
   status->status =
-      tensorflow::AttrTypeByName(op->attr_types, attr_name, &ret, is_list);
+      tensorflow::AttrTypeByName(*op->attr_types, attr_name, &ret, is_list);
   return ret;
 }
 
