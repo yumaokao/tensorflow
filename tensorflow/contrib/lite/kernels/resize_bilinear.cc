@@ -111,7 +111,8 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   } else if (output->type == kTfLiteUInt8) {
       reference_ops::ResizeBilinear(GetTensorData<uint8_t>(input), GetTensorDims(input),
                                     GetTensorData<int32>(size), GetTensorDims(size),
-                                    GetTensorData<uint8_t>(output), GetTensorDims(output));
+                                    GetTensorData<uint8_t>(output), GetTensorDims(output),
+                                    params->align_corners);
   } else {
     context->ReportError(context, "Inputs and outputs not all float types.");
     return kTfLiteError;
