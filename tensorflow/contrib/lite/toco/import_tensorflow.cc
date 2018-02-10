@@ -1375,8 +1375,6 @@ void ConvertResizeBilinearOperator(const NodeDef& node,
 
   op->inputs.push_back(node.input(0));
   op->inputs.push_back(node.input(1));
-  op->new_height = 0;;
-  op->new_width = 0;;
   op->outputs.push_back(node.name());
   model->operators.emplace_back(op);
 }
