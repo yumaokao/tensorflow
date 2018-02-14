@@ -33,6 +33,9 @@ struct Conv2DOptionsT;
 struct TransposeConvOptions;
 struct TransposeConvOptionsT;
 
+struct DilatedConvOptions;
+struct DilatedConvOptionsT;
+
 struct Pool2DOptions;
 struct Pool2DOptionsT;
 
@@ -227,11 +230,12 @@ enum BuiltinOperator {
   BuiltinOperator_QUANTIZE = 50,
   BuiltinOperator_TRANSPOSE_CONV = 51,
   BuiltinOperator_PRELU = 52,
+  BuiltinOperator_DILATED_CONV = 53,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
-  BuiltinOperator_MAX = BuiltinOperator_PRELU
+  BuiltinOperator_MAX = BuiltinOperator_DILATED_CONV
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[50] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[51] {
   static BuiltinOperator values[] = {
       BuiltinOperator_ADD,
       BuiltinOperator_AVERAGE_POOL_2D,
@@ -282,7 +286,8 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[50] {
       BuiltinOperator_BIDIRECTIONAL_SEQUENCE_RNN,
       BuiltinOperator_QUANTIZE,
       BuiltinOperator_TRANSPOSE_CONV,
-      BuiltinOperator_PRELU};
+      BuiltinOperator_PRELU,
+      BuiltinOperator_DILATED_CONV};
   return values;
 }
 
@@ -340,6 +345,7 @@ inline const char **EnumNamesBuiltinOperator() {
                                 "QUANTIZE",
                                 "TRANSPOSE_CONV",
                                 "PRELU",
+                                "DILATED_CONV",
                                 nullptr};
   return names;
 }
@@ -385,11 +391,12 @@ enum BuiltinOptions {
   BuiltinOptions_StridedSliceOptions = 32,
   BuiltinOptions_DepthToSpaceOptions = 33,
   BuiltinOptions_TransposeConvOptions = 34,
+  BuiltinOptions_DilatedConvOptions = 35,
   BuiltinOptions_MIN = BuiltinOptions_NONE,
-  BuiltinOptions_MAX = BuiltinOptions_TransposeConvOptions
+  BuiltinOptions_MAX = BuiltinOptions_DilatedConvOptions
 };
 
-inline BuiltinOptions (&EnumValuesBuiltinOptions())[35] {
+inline BuiltinOptions (&EnumValuesBuiltinOptions())[36] {
   static BuiltinOptions values[] = {
       BuiltinOptions_NONE,
       BuiltinOptions_Conv2DOptions,
@@ -425,7 +432,8 @@ inline BuiltinOptions (&EnumValuesBuiltinOptions())[35] {
       BuiltinOptions_SequenceRNNOptions,
       BuiltinOptions_StridedSliceOptions,
       BuiltinOptions_DepthToSpaceOptions,
-      BuiltinOptions_TransposeConvOptions};
+      BuiltinOptions_TransposeConvOptions,
+      BuiltinOptions_DilatedConvOptions};
   return values;
 }
 
@@ -465,6 +473,7 @@ inline const char **EnumNamesBuiltinOptions() {
                                 "StridedSliceOptions",
                                 "DepthToSpaceOptions",
                                 "TransposeConvOptions",
+                                "DilatedConvOptions",
                                 nullptr};
   return names;
 }
@@ -651,6 +660,11 @@ struct BuiltinOptionsTraits<DepthToSpaceOptions> {
 template <>
 struct BuiltinOptionsTraits<TransposeConvOptions> {
   static const BuiltinOptions enum_value = BuiltinOptions_TransposeConvOptions;
+};
+
+template <>
+struct BuiltinOptionsTraits<DilatedConvOptions> {
+  static const BuiltinOptions enum_value = BuiltinOptions_DilatedConvOptions;
 };
 
 struct BuiltinOptionsUnion {
@@ -1038,6 +1052,16 @@ struct BuiltinOptionsUnion {
   const TransposeConvOptionsT *AsTransposeConvOptions() const {
     return type == BuiltinOptions_TransposeConvOptions
                ? reinterpret_cast<const TransposeConvOptionsT *>(value)
+               : nullptr;
+  }
+  DilatedConvOptionsT *AsDilatedConvOptions() {
+    return type == BuiltinOptions_DilatedConvOptions
+               ? reinterpret_cast<DilatedConvOptionsT *>(value)
+               : nullptr;
+  }
+  const DilatedConvOptionsT *AsDilatedConvOptions() const {
+    return type == BuiltinOptions_DilatedConvOptions
+               ? reinterpret_cast<const DilatedConvOptionsT *>(value)
                : nullptr;
   }
 };
@@ -1613,6 +1637,94 @@ inline flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
 
 flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
     flatbuffers::FlatBufferBuilder &_fbb, const TransposeConvOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+
+struct DilatedConvOptionsT : public flatbuffers::NativeTable {
+  typedef DilatedConvOptions TableType;
+  Padding padding;
+  int32_t rate;
+  ActivationFunctionType fused_activation_function;
+  DilatedConvOptionsT()
+      : padding(Padding_VALID),
+        rate(1),
+        fused_activation_function(ActivationFunctionType_NONE) {}
+};
+
+struct DilatedConvOptions FLATBUFFERS_FINAL_CLASS
+    : private flatbuffers::Table {
+  typedef DilatedConvOptionsT NativeTableType;
+  enum {
+    VT_PADDING = 4,
+    VT_RATE = 6,
+    VT_FUSED_ACTIVATION_FUNCTION = 8
+  };
+  Padding padding() const {
+    return static_cast<Padding>(GetField<int8_t>(VT_PADDING, 0));
+  }
+  int32_t rate() const { return GetField<int32_t>(VT_RATE, 0); }
+  ActivationFunctionType fused_activation_function() const {
+    return static_cast<ActivationFunctionType>(
+        GetField<int8_t>(VT_FUSED_ACTIVATION_FUNCTION, 0));
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int8_t>(verifier, VT_PADDING) &&
+           VerifyField<int32_t>(verifier, VT_RATE) &&
+           VerifyField<int8_t>(verifier, VT_FUSED_ACTIVATION_FUNCTION) &&
+           verifier.EndTable();
+  }
+  DilatedConvOptionsT *UnPack(
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  void UnPackTo(
+      DilatedConvOptionsT *_o,
+      const flatbuffers::resolver_function_t *_resolver = nullptr) const;
+  static flatbuffers::Offset<DilatedConvOptions> Pack(
+      flatbuffers::FlatBufferBuilder &_fbb, const DilatedConvOptionsT *_o,
+      const flatbuffers::rehasher_function_t *_rehasher = nullptr);
+};
+
+struct DilatedConvOptionsBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_padding(Padding padding) {
+    fbb_.AddElement<int8_t>(DilatedConvOptions::VT_PADDING,
+                            static_cast<int8_t>(padding), 0);
+  }
+  void add_rate(int32_t rate) {
+    fbb_.AddElement<int32_t>(DilatedConvOptions::VT_RATE, rate, 0);
+  }
+  void add_fused_activation_function(
+      ActivationFunctionType fused_activation_function) {
+    fbb_.AddElement<int8_t>(DilatedConvOptions::VT_FUSED_ACTIVATION_FUNCTION,
+                            static_cast<int8_t>(fused_activation_function), 0);
+  }
+  explicit DilatedConvOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+      : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  DilatedConvOptionsBuilder &operator=(const DilatedConvOptionsBuilder &);
+  flatbuffers::Offset<DilatedConvOptions> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<DilatedConvOptions>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<DilatedConvOptions> CreateDilatedConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    Padding padding = Padding_VALID,
+    int32_t rate = 1,
+    ActivationFunctionType fused_activation_function =
+        ActivationFunctionType_NONE) {
+  DilatedConvOptionsBuilder builder_(_fbb);
+  builder_.add_rate(rate);
+  builder_.add_fused_activation_function(fused_activation_function);
+  builder_.add_padding(padding);
+  return builder_.Finish();
+}
+
+flatbuffers::Offset<DilatedConvOptions> CreateDilatedConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const DilatedConvOptionsT *_o,
     const flatbuffers::rehasher_function_t *_rehasher = nullptr);
 
 struct Pool2DOptionsT : public flatbuffers::NativeTable {
@@ -4119,6 +4231,11 @@ struct Operator FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
                ? static_cast<const TransposeConvOptions *>(builtin_options())
                : nullptr;
   }
+  const DilatedConvOptions *builtin_options_as_DilatedConvOptions() const {
+    return builtin_options_type() == BuiltinOptions_DilatedConvOptions
+               ? static_cast<const DilatedConvOptions *>(builtin_options())
+               : nullptr;
+  }
   const flatbuffers::Vector<uint8_t> *custom_options() const {
     return GetPointer<const flatbuffers::Vector<uint8_t> *>(VT_CUSTOM_OPTIONS);
   }
@@ -4342,6 +4459,12 @@ template <>
 inline const TransposeConvOptions *
 Operator::builtin_options_as<TransposeConvOptions>() const {
   return builtin_options_as_TransposeConvOptions();
+}
+
+template <>
+inline const DilatedConvOptions *
+Operator::builtin_options_as<DilatedConvOptions>() const {
+  return builtin_options_as_DilatedConvOptions();
 }
 
 struct OperatorBuilder {
@@ -5026,6 +5149,58 @@ inline flatbuffers::Offset<TransposeConvOptions> CreateTransposeConvOptions(
   return tflite::CreateTransposeConvOptions(
       _fbb, _padding, _stride_w, _stride_h, _out_shape_N, _out_shape_H,
       _out_shape_W, _out_shape_C, _fused_activation_function);
+}
+
+
+inline DilatedConvOptionsT *DilatedConvOptions::UnPack(
+    const flatbuffers::resolver_function_t *_resolver) const {
+  auto _o = new DilatedConvOptionsT();
+  UnPackTo(_o, _resolver);
+  return _o;
+}
+
+inline void DilatedConvOptions::UnPackTo(
+    DilatedConvOptionsT *_o,
+    const flatbuffers::resolver_function_t *_resolver) const {
+  (void)_o;
+  (void)_resolver;
+  {
+    auto _e = padding();
+    _o->padding = _e;
+  };
+  {
+    auto _e = rate();
+    _o->rate = _e;
+  };
+  {
+    auto _e = fused_activation_function();
+    _o->fused_activation_function = _e;
+  };
+}
+
+inline flatbuffers::Offset<DilatedConvOptions> DilatedConvOptions::Pack(
+    flatbuffers::FlatBufferBuilder &_fbb, const DilatedConvOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  return CreateDilatedConvOptions(_fbb, _o, _rehasher);
+}
+
+inline flatbuffers::Offset<DilatedConvOptions> CreateDilatedConvOptions(
+    flatbuffers::FlatBufferBuilder &_fbb, const DilatedConvOptionsT *_o,
+    const flatbuffers::rehasher_function_t *_rehasher) {
+  (void)_rehasher;
+  (void)_o;
+  struct _VectorArgs {
+    flatbuffers::FlatBufferBuilder *__fbb;
+    const DilatedConvOptionsT *__o;
+    const flatbuffers::rehasher_function_t *__rehasher;
+  } _va = {&_fbb, _o, _rehasher};
+  (void)_va;
+  auto _padding = _o->padding;
+  auto _rate = _o->rate;
+  auto _fused_activation_function = _o->fused_activation_function;
+  return tflite::CreateDilatedConvOptions(
+      _fbb, _padding, _rate,
+      _fused_activation_function);
 }
 
 inline Pool2DOptionsT *Pool2DOptions::UnPack(
@@ -6991,6 +7166,10 @@ inline bool VerifyBuiltinOptions(flatbuffers::Verifier &verifier,
       auto ptr = reinterpret_cast<const TransposeConvOptions *>(obj);
       return verifier.VerifyTable(ptr);
     }
+    case BuiltinOptions_DilatedConvOptions: {
+      auto ptr = reinterpret_cast<const DilatedConvOptions *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
     default:
       return false;
   }
@@ -7151,6 +7330,10 @@ inline void *BuiltinOptionsUnion::UnPack(
       auto ptr = reinterpret_cast<const TransposeConvOptions *>(obj);
       return ptr->UnPack(resolver);
     }
+    case BuiltinOptions_DilatedConvOptions: {
+      auto ptr = reinterpret_cast<const DilatedConvOptions *>(obj);
+      return ptr->UnPack(resolver);
+    }
     default:
       return nullptr;
   }
@@ -7297,6 +7480,10 @@ inline flatbuffers::Offset<void> BuiltinOptionsUnion::Pack(
     case BuiltinOptions_TransposeConvOptions: {
       auto ptr = reinterpret_cast<const TransposeConvOptionsT *>(value);
       return CreateTransposeConvOptions(_fbb, ptr, _rehasher).Union();
+    }
+    case BuiltinOptions_DilatedConvOptions: {
+      auto ptr = reinterpret_cast<const DilatedConvOptionsT *>(value);
+      return CreateDilatedConvOptions(_fbb, ptr, _rehasher).Union();
     }
     default:
       return 0;
@@ -7461,6 +7648,11 @@ inline BuiltinOptionsUnion::BuiltinOptionsUnion(const BuiltinOptionsUnion &u)
     case BuiltinOptions_TransposeConvOptions: {
       value = new TransposeConvOptionsT(
           *reinterpret_cast<TransposeConvOptionsT *>(u.value));
+      break;
+    }
+    case BuiltinOptions_DilatedConvOptions: {
+      value = new DilatedConvOptionsT(
+          *reinterpret_cast<DilatedConvOptionsT *>(u.value));
       break;
     }
     default:
@@ -7637,6 +7829,11 @@ inline void BuiltinOptionsUnion::Reset() {
     }
     case BuiltinOptions_TransposeConvOptions: {
       auto ptr = reinterpret_cast<TransposeConvOptionsT *>(value);
+      delete ptr;
+      break;
+    }
+    case BuiltinOptions_DilatedConvOptions: {
+      auto ptr = reinterpret_cast<DilatedConvOptionsT *>(value);
       delete ptr;
       break;
     }

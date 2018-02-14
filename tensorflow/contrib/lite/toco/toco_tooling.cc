@@ -96,6 +96,7 @@ void MakeGeneralGraphTransformationsSet(
   transformations->Add(new ResolveConstantShapeOrRank);
   transformations->Add(new MakeInitialDequantizeOperator);
   transformations->Add(new ResolvePRelu);
+  transformations->Add(new ResolveDilatedConv);
 }
 
 bool SupportsQuantization(FileFormat format) {

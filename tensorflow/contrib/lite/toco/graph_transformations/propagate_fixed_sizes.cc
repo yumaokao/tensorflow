@@ -88,7 +88,8 @@ int GetOutputDepthFromWeights(const Model& model, const Operator& op) {
   const auto& weights_shape = model.GetArray(weights_name).shape();
   if (op.type == OperatorType::kConv ||
       op.type == OperatorType::kFullyConnected ||
-      op.type == OperatorType::kTransposeConv) {
+      op.type == OperatorType::kTransposeConv ||
+      op.type == OperatorType::kDilatedConv) {
     return weights_shape.dims(0);
   } else if (op.type == OperatorType::kDepthwiseConv) {
     return weights_shape.dims(3);
@@ -238,6 +239,55 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
 
   // ProcessConvOperator use im2col, add if necessary
   // Set im2col array dimensions if there is one.
+}
+
+void ProcessDilatedConvOperator(Model* model, DilatedConvOperator* op) {
+  if (!EnsureBiasVectorShape(model, op)) {
+    return;
+  }
+
+  const auto& input_array = model->GetArray(op->inputs[0]);
+  // Yield until input dims have been resolved.
+  if (!input_array.has_shape()) {
+    return;
+  }
+  const auto& input_shape = input_array.shape();
+  CHECK_EQ(input_shape.dimensions_count(), 4);
+
+  const auto& weights_array = model->GetArray(op->inputs[1]);
+  // Yield until weights dims have been resolved.
+  if (!weights_array.has_shape()) {
+    return;
+  }
+  const auto& weights_shape = weights_array.shape();
+  CHECK_EQ(weights_shape.dimensions_count(), 4);
+
+  auto& output_array = model->GetArray(op->outputs[0]);
+  const int batch = input_shape.dims(0);
+  const int output_depth = weights_shape.dims(0);
+  const int kheight = weights_shape.dims(1);
+  const int kwidth = weights_shape.dims(2);
+
+  const int input_height = input_shape.dims(1);
+  const int input_width  = input_shape.dims(2);
+  int output_height = 0;
+  int output_width  = 0;
+  if (op->padding.type == PaddingType::kValid) {
+    output_height = input_height - 2 * (kheight - 1);
+    output_width  = input_width - 2 * (kwidth - 1);
+  } else if (op->padding.type == PaddingType::kSame) {
+    output_height = input_height;
+    output_width  = input_width;
+  } else {
+    LOG(FATAL) << "Only supporting SAME or VALID padding";
+  }
+  CHECK_GT(output_width, 0);
+  CHECK_GT(output_height, 0);
+
+  Shape* output_shape = output_array.mutable_shape();
+  output_shape->ReplaceDims({batch, output_height, output_width, output_depth});
+
+  CHECK_EQ(output_array.shape().dimensions_count(), 4);
 }
 
 void ProcessDepthToSpaceOperator(Model* model, DepthToSpaceOperator* op) {
@@ -1468,6 +1518,10 @@ bool PropagateFixedSizes::Run(Model* model, std::size_t op_index) {
     case OperatorType::kDepthwiseConv:
       ProcessDepthwiseConvOperator(model,
                                    static_cast<DepthwiseConvOperator*>(op));
+      break;
+    case OperatorType::kDilatedConv:
+      ProcessDilatedConvOperator(model,
+                                 static_cast<DilatedConvOperator*>(op));
       break;
     case OperatorType::kDepthToSpace:
       ProcessDepthToSpaceOperator(model,
