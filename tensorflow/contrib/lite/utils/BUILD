@@ -29,7 +29,8 @@ tf_cc_binary(
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
-        "//tensorflow/core:tensorflow",
+	"//tensorflow/core:framework_internal",
+	"//tensorflow/core:lib",
     ],
     linkopts = [
         "-lm",
@@ -45,7 +46,8 @@ tf_cc_binary(
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
-        "//tensorflow/core:tensorflow",
+	"//tensorflow/core:framework_internal",
+	"//tensorflow/core:lib",
     ],
     linkopts = [
         "-lm",
