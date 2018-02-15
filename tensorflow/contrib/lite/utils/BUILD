@@ -29,7 +29,7 @@ tf_cc_binary(
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
-	"//tensorflow/core:tensorflow",
+        "//tensorflow/core:tensorflow",
     ],
     linkopts = [
         "-lm",
@@ -45,10 +45,26 @@ tf_cc_binary(
         "//tensorflow/contrib/lite:framework",
         "//tensorflow/contrib/lite/kernels:builtin_ops",
         "//tensorflow/contrib/lite/nnapi:nnapi_lib",
-	"//tensorflow/core:tensorflow",
+        "//tensorflow/core:tensorflow",
     ],
     linkopts = [
         "-lm",
+    ],
+)
+
+cc_binary(
+    name = "libtoco.so",
+    linkshared = 1,
+    srcs = ["toco_library.cc"],
+    deps = [
+        "//tensorflow/contrib/lite/toco:model",
+        "//tensorflow/contrib/lite/toco:model_cmdline_flags",
+        "//tensorflow/contrib/lite/toco:model_flags_proto_cc",
+        "//tensorflow/contrib/lite/toco:toco_cmdline_flags",
+        "//tensorflow/contrib/lite/toco:toco_flags_proto_cc",
+        "//tensorflow/contrib/lite/toco:toco_port",
+        "//tensorflow/contrib/lite/toco:toco_tooling",
+        "//tensorflow/contrib/lite/toco:types_proto_cc",
     ],
 )
 
