@@ -120,9 +120,12 @@ enum BuiltinOperator : byte {
   UNIDIRECTIONAL_SEQUENCE_LSTM = 44,
   STRIDED_SLICE = 45,
   BIDIRECTIONAL_SEQUENCE_RNN = 46,
-  QUANTIZE = 50,
-  TRANSPOSE_CONV = 51,
-  PRELU = 52,
+  EXP = 47,
+  TOPK_V2 = 48,
+  SPLIT = 49,
+  QUANTIZE = 60,
+  TRANSPOSE_CONV = 61,
+  PRELU = 62,
 }
 
 // Options for the builtin operators.
@@ -159,6 +162,9 @@ union BuiltinOptions {
   SqueezeOptions,
   SequenceRNNOptions,
   StridedSliceOptions,
+  ExpOptions,
+  TopKV2Options,
+  SplitOptions,
   DepthToSpaceOptions,
   TransposeConvOptions,
 }
@@ -331,6 +337,9 @@ table DivOptions {
   fused_activation_function:ActivationFunctionType;
 }
 
+table TopKV2Options {
+}
+
 table DepthToSpaceOptions {
   block_size: int;
 }
@@ -352,12 +361,19 @@ table GatherOptions {
 table TransposeOptions {
 }
 
+table ExpOptions {
+}
+
 table MeanOptions {
   keep_dims: bool;
 }
 
 table SqueezeOptions {
   squeeze_dims:[int];
+}
+
+table SplitOptions {
+  num_splits: int;
 }
 
 table StridedSliceOptions {

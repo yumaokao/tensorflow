@@ -35,6 +35,7 @@ enum class OperatorType {
   kAdd,
   kAddN,
   kAveragePool,
+  kBatchMatMul,
   kBatchNormalization,
   kConv,
   kConcatenation,
@@ -44,6 +45,7 @@ enum class OperatorType {
   kDequantize,
   kQuantize,
   kDiv,
+  kExp,
   kExpandDims,
   kFill,
   kFloorDiv,
@@ -64,6 +66,7 @@ enum class OperatorType {
   kRelu1,
   kRelu6,
   kSoftmax,
+  kLogSoftmax,
   kSub,
   kTanh,
   kTransposeConv,
@@ -113,6 +116,7 @@ enum class OperatorType {
   kTensorFlowSwitch,
   kTensorFlowTile,
   kTranspose,
+  kTopK_V2,
   // An unsupported TF operation. It's only needed to be able to represent TF
   // graph internally and is expected to be dropped by graph transformations.
   kTensorFlowUnsupported,
@@ -162,12 +166,17 @@ enum class AxesOrder {
 // may be involved only in debug-only subgraphs that we may not be interested
 // in actually supporting).
 enum class ArrayDataType {
-  kNone,
+  kNone,  // 0
   kBool,
   kFloat,
+  kInt8,
   kUint8,
+  kInt16,  // 5
+  kUint16,
   kInt32,
+  kUint32,
   kInt64,
+  kUint64,  // 10
   kString
 };
 
@@ -187,16 +196,36 @@ struct DataTypeImpl<ArrayDataType::kFloat> {
   typedef float Type;
 };
 template <>
+struct DataTypeImpl<ArrayDataType::kInt8> {
+  typedef int8 Type;
+};
+template <>
 struct DataTypeImpl<ArrayDataType::kUint8> {
   typedef uint8 Type;
+};
+template <>
+struct DataTypeImpl<ArrayDataType::kInt16> {
+  typedef int16 Type;
+};
+template <>
+struct DataTypeImpl<ArrayDataType::kUint16> {
+  typedef uint16 Type;
 };
 template <>
 struct DataTypeImpl<ArrayDataType::kInt32> {
   typedef int32 Type;
 };
 template <>
+struct DataTypeImpl<ArrayDataType::kUint32> {
+  typedef uint32 Type;
+};
+template <>
 struct DataTypeImpl<ArrayDataType::kInt64> {
   typedef int64 Type;
+};
+template <>
+struct DataTypeImpl<ArrayDataType::kUint64> {
+  typedef uint64 Type;
 };
 template <>
 struct DataTypeImpl<ArrayDataType::kString> {
@@ -748,6 +777,19 @@ struct TensorFlowIdentityOperator : Operator {
   TensorFlowIdentityOperator() : Operator(OperatorType::kTensorFlowIdentity) {}
 };
 
+// Batch matrix multiplication operator. This comes from the (deprecated)
+// tf.batch_matmul or a tf.matmul that has rank 3. dims(0) is the batch count
+// and it can be trivially unrolled into a series of matmuls on each element.
+//
+// Inputs:
+//   inputs[0]: required: the left-hand side matrix
+//   inputs[1]: required: the right-hand side matrix
+//
+// TensorFlow equivalent: MatMul
+struct BatchMatMulOperator : Operator {
+  BatchMatMulOperator() : Operator(OperatorType::kBatchMatMul) {}
+};
+
 // General matrix multiplication operator. We don't want to support general
 // matrix multiplication at inference time, so we resolve it during tooling
 // to more specific operator types, namely, FullyConnected.
@@ -850,6 +892,17 @@ struct TransposeConvOperator : Operator {
   int out_shape_H = 0;
   int out_shape_W = 0;
   int out_shape_C = 0;
+};
+
+// Given a tensor input, this operation calculates element-wise exponential
+// (y = e^x).
+//
+// Inputs:
+//   inputs[0]: required: input tensor
+//
+// TensorFlow equivalent: Exp
+struct ExpOperator : Operator {
+  ExpOperator() : Operator(OperatorType::kExp) {}
 };
 
 // Given a tensor input, this operation inserts a dimension of 1 at the
@@ -1284,6 +1337,16 @@ struct SoftmaxOperator : Operator {
   float beta = 0.f;
 };
 
+// LogSoftmax activation function.
+//
+// Inputs:
+//   inputs[0]: required: the logits input array
+//
+// TensorFlow equivalent: LogSoftmax
+struct LogSoftmaxOperator : Operator {
+  LogSoftmaxOperator() : Operator(OperatorType::kLogSoftmax) {}
+};
+
 // Cast operator.
 //
 // Inputs:
@@ -1404,6 +1467,14 @@ struct MeanOperator : Operator {
 struct SvdfOperator : Operator {
   SvdfOperator() : Operator(OperatorType::kSvdf) {}
   int rank;
+};
+
+// TopKV2 operator.
+//
+// Inputs:
+//    input tensor and top_k scalar.
+struct TopKV2Operator : Operator {
+  TopKV2Operator() : Operator(OperatorType::kTopK_V2) {}
 };
 
 // Alloc's are used for transient arrays only. An Alloc specifies which interval
@@ -1612,7 +1683,7 @@ class Model {
 
   bool HasArray(const string& name) const { return arrays.count(name) > 0; }
   Array& GetArray(const string& name) const {
-    DCHECK(HasArray(name));
+    DCHECK(HasArray(name)) << "Array not found: " << name;
     return *arrays.at(name);
   }
   Array& GetOrCreateArray(const string& name) {

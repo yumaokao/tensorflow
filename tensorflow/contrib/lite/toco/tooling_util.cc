@@ -25,6 +25,7 @@ limitations under the License.
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/str_split.h"
 #include "tensorflow/contrib/lite/toco/dump_graphviz.h"
 #include "tensorflow/contrib/lite/toco/model_flags.pb.h"
 #include "tensorflow/contrib/lite/toco/toco_graphviz_dump_options.h"
@@ -110,7 +111,17 @@ int CountOpsWithInput(const Model& model, const string& array_name) {
 }
 
 bool DeleteArrayIfUnused(const string& array_name, Model* model) {
-  if (CountOpsWithInput(*model, array_name) == 0) {
+  if (IsDiscardableArray(*model, array_name) &&
+      CountOpsWithInput(*model, array_name) == 0) {
+    model->EraseArray(array_name);
+    return true;
+  }
+  return false;
+}
+
+bool DeleteArrayIfUsedOnce(const string& array_name, Model* model) {
+  if (IsDiscardableArray(*model, array_name) &&
+      CountOpsWithInput(*model, array_name) == 1) {
     model->EraseArray(array_name);
     return true;
   }
@@ -149,6 +160,18 @@ Operator* GetOpWithOutput(const Model& model, const string& array_name) {
 // GetFirstOpWithInput assumes that this finds the first op.
 std::vector<std::unique_ptr<Operator>>::const_iterator FindOpWithInput(
     const Model& model, const string& array_name) {
+  for (auto it = model.operators.begin(); it != model.operators.end(); ++it) {
+    for (auto& input : it->get()->inputs) {
+      if (input == array_name) {
+        return it;
+      }
+    }
+  }
+  return model.operators.end();
+}
+
+std::vector<std::unique_ptr<Operator>>::iterator FindOpWithInput(
+    Model& model, const string& array_name) {
   for (auto it = model.operators.begin(); it != model.operators.end(); ++it) {
     for (auto& input : it->get()->inputs) {
       if (input == array_name) {
@@ -217,6 +240,7 @@ const char* OperatorTypeName(OperatorType type) {
     HANDLE_OPERATORTYPENAME_CASE(Add)
     HANDLE_OPERATORTYPENAME_CASE(AddN)
     HANDLE_OPERATORTYPENAME_CASE(AveragePool)
+    HANDLE_OPERATORTYPENAME_CASE(BatchMatMul)
     HANDLE_OPERATORTYPENAME_CASE(BatchNormalization)
     HANDLE_OPERATORTYPENAME_CASE(Conv)
     HANDLE_OPERATORTYPENAME_CASE(Concatenation)
@@ -240,6 +264,7 @@ const char* OperatorTypeName(OperatorType type) {
     HANDLE_OPERATORTYPENAME_CASE(Relu6)
     HANDLE_OPERATORTYPENAME_CASE(ReorderAxes)
     HANDLE_OPERATORTYPENAME_CASE(Softmax)
+    HANDLE_OPERATORTYPENAME_CASE(LogSoftmax)
     HANDLE_OPERATORTYPENAME_CASE(Div)
     HANDLE_OPERATORTYPENAME_CASE(Tanh)
     HANDLE_OPERATORTYPENAME_CASE(TensorFlowAll)
@@ -290,9 +315,11 @@ const char* OperatorTypeName(OperatorType type) {
     HANDLE_OPERATORTYPENAME_CASE(Mean)
     HANDLE_OPERATORTYPENAME_CASE(Svdf)
     HANDLE_OPERATORTYPENAME_CASE(ArgMax)
+    HANDLE_OPERATORTYPENAME_CASE(TopK_V2)
     HANDLE_OPERATORTYPENAME_CASE(TensorFlowAbs)
     HANDLE_OPERATORTYPENAME_CASE(PRelu)
     HANDLE_OPERATORTYPENAME_CASE(TensorFlowUnsupported)
+    HANDLE_OPERATORTYPENAME_CASE(Exp)
     default:
       LOG(FATAL) << "Unhandled op type";
 #undef HANDLE_OPERATORTYPENAME_CASE
@@ -311,6 +338,7 @@ string HelpfulOperatorTypeName(const Operator& op) {
 bool OperatorSupportsFusedActivation(OperatorType type) {
   switch (type) {
     case OperatorType::kConcatenation:
+    case OperatorType::kGather:
     case OperatorType::kSlice:
     case OperatorType::kSqueeze:
     case OperatorType::kTensorFlowReshape:
@@ -410,7 +438,7 @@ void LogArray(int log_level, const Model& model, const string& name) {
   }
   if (array.quantization_params) {
     VLOG(log_level) << "  QuantizationParams: zero_point="
-                    << array.quantization_params->zero_point
+                    << static_cast<int>(array.quantization_params->zero_point)
                     << ", scale=" << array.quantization_params->scale;
   }
 }
@@ -610,6 +638,14 @@ bool IsConstantParameterArray(const Model& model, const string& name) {
 }
 
 namespace {
+// Take an array name, which may be something like "name:3_5" and make it
+// acceptable as a TF node name, say "name_3_5";
+string SanitizeNameForTFNode(const string& array_name) {
+  auto node_name = array_name;
+  std::replace(node_name.begin(), node_name.end(), ':', '_');
+  return node_name;
+}
+
 void CheckInputArraysAreNotOutputArrays(const ModelFlags& model_flags) {
   for (const auto& input_array : model_flags.input_arrays()) {
     for (const string& output_array : model_flags.output_arrays()) {
@@ -689,12 +725,10 @@ void CheckNoMissingArray(const Model& model) {
   for (const auto& op : model.operators) {
     for (const auto& input : op->inputs) {
       CHECK(model.HasArray(input) || model.optional_arrays.count(input))
-       << "Input: " << input << " missing for op: " 
-       << op->outputs[0] << ".";
+          << "Input: " << input << " missing for op: " << op->outputs[0] << ".";
     }
     for (const auto& output : op->outputs) {
-      CHECK(model.HasArray(output)) << "Output: " << output 
-        << " missing.";
+      CHECK(model.HasArray(output)) << "Output: " << output << " missing.";
     }
   }
   CheckNonExistentIOArrays(model);
@@ -775,7 +809,10 @@ void FixNoOrphanedArray(Model* model) {
   }
 }
 
-void CheckArrayFieldsConsistent(const Model& model) {
+// Apply checks to arrays individually (for-each fashion).
+//
+// Check consistency of array fields, check name.
+void CheckEachArray(const Model& model) {
   for (const auto& array_entry : model.GetArrayMap()) {
     const auto& array = array_entry.second;
     if (array->has_shape()) {
@@ -790,6 +827,18 @@ void CheckArrayFieldsConsistent(const Model& model) {
     if (array->buffer) {
       CHECK(array->buffer->type == array->data_type);
     }
+
+    // Check name.  Either "name_with_suffix_8", "name_with_port:3", but not
+    // "name_with_both:3_8".
+    const string& name = array_entry.first;
+    auto colon_pos = name.find_first_of(":");
+    if (colon_pos != string::npos) {
+      CHECK_EQ(name.substr(colon_pos + 1).find_first_not_of("0123456789"),
+               string::npos)
+          << "Array name must only have digits after colon";
+    }
+    CHECK_GT(colon_pos, 0)
+        << "First character of array name must not be a colon.";
   }
 }
 
@@ -938,7 +987,7 @@ void CheckInvariants(const Model& model) {
   CheckNonAsciiIOArrays(model.flags);
   CheckNoMissingArray(model);
   CheckNoOrphanedArray(model);
-  CheckArrayFieldsConsistent(model);
+  CheckEachArray(model);
   CheckOperatorOrdering(model);
 }
 
@@ -1030,9 +1079,6 @@ void CreateOrCheckRnnStateArray(const string& name, int size, Model* model) {
   if (array.has_shape()) {
     num_dims = array.shape().dimensions_count();
   }
-  CHECK(array.data_type == ArrayDataType::kFloat ||
-        array.data_type == ArrayDataType::kNone);
-  array.data_type = ArrayDataType::kFloat;
   if (!array.has_shape() && num_dims >= 0) {
     Shape* shape = array.mutable_shape();
     std::vector<int> dims;
@@ -1056,7 +1102,7 @@ void ResolveModelFlags(const ModelFlags& model_flags, Model* model) {
       }
     }
     if (!dst_input_array) {
-      // specified_input_array from model_flags is not found in model->flags.
+      // Specified_input_array from model_flags is not found in model->flags.
       // Match a name-less specified input array when there can be no ambiguity
       // as there is only 1 input array.
       if (model->flags.input_arrays_size() == 1 &&
@@ -1300,12 +1346,23 @@ int ElementSize(ArrayDataType data_type) {
   switch (data_type) {
     case ArrayDataType::kFloat:
       return 4;
-    case ArrayDataType::kInt32:
-      return 4;
+    case ArrayDataType::kInt8:
+      return 1;
     case ArrayDataType::kUint8:
       return 1;
+    case ArrayDataType::kInt16:
+      return 2;
+    case ArrayDataType::kUint16:
+      return 2;
+    case ArrayDataType::kInt32:
+      return 4;
+    case ArrayDataType::kUint32:
+      return 4;
     case ArrayDataType::kInt64:
       return 8;
+    case ArrayDataType::kUint64:
+      return 8;
+
     // Usually not critical limitation because strings are only input and/or
     // output.
     case ArrayDataType::kString:
@@ -1352,19 +1409,23 @@ bool IsAllocatableTransientArray(const Model& model, const string& array_name) {
 }
 
 string AvailableArrayName(const Model& model, const string& name) {
-  if (!model.HasArray(name) && !model.IsOptionalArray(name)) {
-    return name;
+  string sanitized_name = SanitizeNameForTFNode(name);
+  if (!model.HasArray(sanitized_name) &&
+      !model.IsOptionalArray(sanitized_name)) {
+    return sanitized_name;
   }
   const int kNumSuffixesToTry = 1000;
   for (int i = 0; i < kNumSuffixesToTry; i++) {
-    const string& name_with_suffix = toco::port::StringF("%s_%d", name, i);
+    const string& name_with_suffix =
+        toco::port::StringF("%s_%d", sanitized_name, i);
     if (!model.HasArray(name_with_suffix) &&
         !model.IsOptionalArray(name_with_suffix)) {
       return name_with_suffix;
     }
   }
-  LOG(FATAL) << "Could not find an available array name starting with " << name
-             << ". Tried " << kNumSuffixesToTry << " suffixes, all were taken!";
+  LOG(FATAL) << "Could not find an available array name starting with "
+             << sanitized_name << ". Tried " << kNumSuffixesToTry
+             << " suffixes, all were taken!";
   return "";
 }
 
@@ -1401,6 +1462,21 @@ bool IsArrayFullyConnectedWeights(const Model& model, const string& name) {
   }
   CHECK(!(is_fc_weights && is_something_else));
   return is_fc_weights;
+}
+
+string CreateInt32Array(Model* model, const string& param_name,
+                        const std::vector<int>& value) {
+  auto param_array_name = AvailableArrayName(*model, param_name);
+  auto& param_array = model->GetOrCreateArray(param_array_name);
+  param_array.mutable_shape()->ReplaceDims({static_cast<int>(value.size())});
+  param_array.data_type = ArrayDataType::kInt32;
+  auto& param_array_data =
+      param_array.GetMutableBuffer<ArrayDataType::kInt32>().data;
+  param_array_data.resize(RequiredBufferSizeForShape(param_array.shape()));
+  for (int i = 0; i < value.size(); ++i) {
+    param_array_data[i] = value[i];
+  }
+  return param_array_name;
 }
 
 bool EstimateArithmeticOpsCount(const Model& model, int64* result) {
@@ -1450,6 +1526,7 @@ bool EstimateArithmeticOpsCount(const Model& model, int64* result) {
       }
       case OperatorType::kLogistic:
       case OperatorType::kSoftmax:
+      case OperatorType::kLogSoftmax:
       case OperatorType::kTanh: {
         const auto& output_array = model.GetArray(op->outputs[0]);
         if (!output_array.has_shape()) {
@@ -1558,10 +1635,6 @@ void GetShuffleShape(AxesOrder input_axes_order, AxesOrder output_axes_order,
   }
 }
 
-namespace {
-
-// Extend shuffle is designed to match ExtendShape, which pads the shape with
-// unit dimensions at the beginning.
 void ExtendShuffle(const std::vector<int>& input_shuffle, int newdim,
                    std::vector<int>* extended_shuffle) {
   *extended_shuffle = input_shuffle;
@@ -1575,8 +1648,6 @@ void ExtendShuffle(const std::vector<int>& input_shuffle, int newdim,
     (*extended_shuffle)[i] = input_shuffle[i - pad_size] + pad_size;
   }
 }
-
-}  // end anonymous namespace
 
 void ShuffleDims(const Shape& input_shape, AxesOrder input_axes_order,
                  AxesOrder output_axes_order, Shape* output_shape) {
@@ -1764,6 +1835,23 @@ ArrayDataType ConvertIODataTypeToArrayDataType(IODataType type) {
   }
 }
 
+void FinishBuildingRNNStates(Model* model) {
+  for (const auto& rnn_state : model->flags.rnn_states()) {
+    if (!model->HasArray(rnn_state.back_edge_source_array()) ||
+        !model->HasArray(rnn_state.state_array())) {
+      CHECK(model->HasArray(rnn_state.back_edge_source_array()));
+      CHECK(model->HasArray(rnn_state.state_array()));
+      continue;
+    }
+    const auto& src_array = model->GetArray(rnn_state.back_edge_source_array());
+    auto& dst_array = model->GetArray(rnn_state.state_array());
+    if (src_array.data_type == ArrayDataType::kNone &&
+        dst_array.data_type == ArrayDataType::kNone) {
+      dst_array.data_type = ArrayDataType::kFloat;
+    }
+  }
+}
+
 void UseArraysExtraInfo(Model* model) {
   for (const auto& entry : model->flags.arrays_extra_info().entries()) {
     QCHECK(model->HasArray(entry.name()))
@@ -1773,24 +1861,6 @@ void UseArraysExtraInfo(Model* model) {
     minmax.min = entry.min();
     minmax.max = entry.max();
   }
-}
-
-bool IsRnnSourceArray(const toco::Model& model, const string& array_name) {
-  for (const auto& rnn_state : model.flags.rnn_states()) {
-    if (array_name == rnn_state.back_edge_source_array()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool IsRnnStateArray(const toco::Model& model, const string& array_name) {
-  for (const auto& rnn_state : model.flags.rnn_states()) {
-    if (array_name == rnn_state.state_array()) {
-      return true;
-    }
-  }
-  return false;
 }
 
 }  // namespace toco

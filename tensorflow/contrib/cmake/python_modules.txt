@@ -331,9 +331,6 @@ tensorflow/contrib/nccl/kernels
 tensorflow/contrib/nccl/ops
 tensorflow/contrib/nccl/python
 tensorflow/contrib/nccl/python/ops
-tensorflow/contrib/ndlstm
-tensorflow/contrib/ndlstm/python
-tensorflow/contrib/nearest_neighbor
 tensorflow/contrib/nearest_neighbor/kernels
 tensorflow/contrib/nearest_neighbor/ops
 tensorflow/contrib/nearest_neighbor/python
@@ -416,6 +413,9 @@ tensorflow/contrib/tensorboard
 tensorflow/contrib/tensorboard/plugins
 tensorflow/contrib/tensorboard/plugins/projector
 tensorflow/contrib/tensorboard/plugins/trace
+# TODO(sami): Add cmake implementations.
+# tensorflow/contrib/tensorrt/python
+# tensorflow/contrib/tensorrt/python/ops
 tensorflow/contrib/tensor_forest
 tensorflow/contrib/tensor_forest/client
 tensorflow/contrib/tensor_forest/hybrid

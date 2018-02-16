@@ -518,8 +518,8 @@ def batch_norm(inputs,
       then the batch normalization uses weighted mean and
       variance. (This can be used to correct for bias in training
       example selection.)
-    fused: if `True`, use a faster, fused implementation if possible.
-      If `None`, use the system recommended implementation.
+    fused: if `None` or `True`, use a faster, fused implementation if possible.
+      If `False`, use the system recommended implementation.
     data_format: A string. `NHWC` (default) and `NCHW` are supported.
     zero_debias_moving_mean: Use zero_debias for moving_mean. It creates a new
       pair of variables 'moving_mean/biased' and 'moving_mean/local_step'.
@@ -779,7 +779,7 @@ def batch_norm(inputs,
       else:
         if data_format == DATA_FORMAT_NCHW:
           mean, variance = nn.weighted_moments(
-              inputs, moments_axes, batch_weights, keep_dims=True)
+              inputs, moments_axes, batch_weights, keepdims=True)
           mean = array_ops.reshape(mean, [-1])
           variance = array_ops.reshape(variance, [-1])
         else:
@@ -1415,12 +1415,11 @@ def dense_to_sparse(tensor, eos_token=0, outputs_collections=None, scope=None):
      outputs_collections: Collection to add the outputs.
      scope: Optional scope for name_scope.
   """
-  with variable_scope.variable_scope(
-      scope, 'dense_to_sparse', [tensor]) as sc:
+  with variable_scope.variable_scope(scope, 'dense_to_sparse', [tensor]) as sc:
     tensor = ops.convert_to_tensor(tensor)
     indices = array_ops.where(
-        math_ops.not_equal(
-            tensor, constant_op.constant(eos_token, tensor.dtype)))
+        math_ops.not_equal(tensor, constant_op.constant(eos_token,
+                                                        tensor.dtype)))
     values = array_ops.gather_nd(tensor, indices)
     shape = array_ops.shape(tensor, out_type=dtypes.int64)
     outputs = sparse_tensor.SparseTensor(indices, values, shape)
@@ -2834,9 +2833,9 @@ def spatial_softmax(features,
 
       softmax_attention = nn.softmax(features / temperature)
       expected_x = math_ops.reduce_sum(
-          pos_x * softmax_attention, [1], keep_dims=True)
+          pos_x * softmax_attention, [1], keepdims=True)
       expected_y = math_ops.reduce_sum(
-          pos_y * softmax_attention, [1], keep_dims=True)
+          pos_y * softmax_attention, [1], keepdims=True)
       expected_xy = array_ops.concat([expected_x, expected_y], 1)
       feature_keypoints = array_ops.reshape(expected_xy,
                                             [-1, num_channels.value * 2])
@@ -2969,7 +2968,7 @@ def poincare_normalize(x, axis=1, epsilon=1e-5, name=None):
   """
   with ops.name_scope(name, 'poincare_normalize', [x]) as name:
     x = ops.convert_to_tensor(x, name='x')
-    square_sum = math_ops.reduce_sum(math_ops.square(x), axis, keep_dims=True)
+    square_sum = math_ops.reduce_sum(math_ops.square(x), axis, keepdims=True)
     x_inv_norm = math_ops.rsqrt(square_sum)
     x_inv_norm = math_ops.minimum((1. - epsilon) * x_inv_norm, 1.)
     return math_ops.multiply(x, x_inv_norm, name=name)

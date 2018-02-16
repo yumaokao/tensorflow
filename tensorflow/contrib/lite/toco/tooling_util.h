@@ -60,6 +60,7 @@ int CountTrueOutputs(const Model& model, const Operator& op);
 
 int CountOpsWithInput(const Model& model, const string& array_name);
 bool DeleteArrayIfUnused(const string& array_name, Model* model);
+bool DeleteArrayIfUsedOnce(const string& array_name, Model* model);
 
 std::vector<std::unique_ptr<Operator>>::const_iterator FindOpWithOutput(
     const Model& model, const string& array_name);
@@ -67,10 +68,15 @@ Operator* GetOpWithOutput(const Model& model, const string& array_name);
 
 std::vector<std::unique_ptr<Operator>>::iterator FindOpWithOutput(
     Model& model, const string& array_name);
+
 Operator* GetOpWithOutput(const Model& model, const string& array_name);
 
 std::vector<std::unique_ptr<Operator>>::const_iterator FindOpWithInput(
     const Model& model, const string& array_name);
+
+std::vector<std::unique_ptr<Operator>>::iterator FindOpWithInput(
+    Model& model, const string& array_name);
+
 Operator* GetOpWithInput(const Model& model, const string& array_name);
 Operator* GetFirstOpWithInput(const Model& model, const string& array_name);
 
@@ -255,6 +261,11 @@ void PrintArrayShape(Model* model, const string& name);
 void MakeArrayDims(int num_dims, int batch, int height, int width, int depth,
                    std::vector<int>* out_dims);
 
+// Defines a constant int32 array with the provided values formatted for use
+// as op parameters.
+string CreateInt32Array(Model* model, const string& param_name,
+                        const std::vector<int>& value);
+
 bool EstimateArithmeticOpsCount(const Model& model, int64* result);
 
 int AxesCount(AxesOrder axes_order);
@@ -263,6 +274,11 @@ int AxesCount(AxesOrder axes_order);
 // output axes order.
 void GetShuffleShape(AxesOrder input_axes_order, AxesOrder output_axes_order,
                      std::vector<int>* shuffle);
+
+// Extend shuffle is designed to match ExtendShape, which pads the shape with
+// unit dimensions at the beginning.
+void ExtendShuffle(const std::vector<int>& input_shuffle, int newdim,
+                   std::vector<int>* extended_shuffle);
 
 void ShuffleDims(const Shape& input_shape, AxesOrder input_axes_order,
                  AxesOrder output_axes_order, Shape* output_shape);
@@ -283,10 +299,24 @@ void CheckFinalDataTypesSatisfied(const Model& model);
 
 ArrayDataType ConvertIODataTypeToArrayDataType(IODataType type);
 
-void UseArraysExtraInfo(Model* model);
+// The process of building models varies according to the import format.
+//
+// (a) In some cases, such as model-proto format, the model should be fully
+// specified. In these cases, no extra action should be taken by this function.
+// (b) In other cases, such as TF graphdef format, the desired types of RNN
+// arrays are not specified directly in the model, neither can they be inferred.
+// However, we can set the types of RNN destination arrays to float. This breaks
+// any cycles such as when resolution of the type of an RNN source array depends
+// on the type of its destination array.
+//
+// This function is applied after the main import, after resolution of flags and
+// after application of ArraysExtraInfo. It only defaults destination RNN arrays
+// to float. If the model is subsequently quantized, it is assumed that the
+// model contains sufficient information for that to be completed. If it is
+// already quantized, then case (a) should hold.
+void FinishBuildingRNNStates(Model* model);
 
-bool IsRnnSourceArray(const toco::Model& model, const string& array_name);
-bool IsRnnStateArray(const toco::Model& model, const string& array_name);
+void UseArraysExtraInfo(Model* model);
 
 }  // namespace toco
 
