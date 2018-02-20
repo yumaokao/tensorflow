@@ -267,14 +267,15 @@ void ProcessDilatedConvOperator(Model* model, DilatedConvOperator* op) {
   const int output_depth = weights_shape.dims(0);
   const int kheight = weights_shape.dims(1);
   const int kwidth = weights_shape.dims(2);
+  const int rate = op->rate;
 
   const int input_height = input_shape.dims(1);
   const int input_width  = input_shape.dims(2);
   int output_height = 0;
   int output_width  = 0;
   if (op->padding.type == PaddingType::kValid) {
-    output_height = input_height - 2 * (kheight - 1);
-    output_width  = input_width - 2 * (kwidth - 1);
+    output_height = input_height - rate * (kheight - 1);
+    output_width  = input_width - rate * (kwidth - 1);
   } else if (op->padding.type == PaddingType::kSame) {
     output_height = input_height;
     output_width  = input_width;

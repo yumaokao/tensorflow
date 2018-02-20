@@ -90,19 +90,20 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   int filter_width = filter->dims->data[2];
   int filter_height = filter->dims->data[1];
   int batches = input->dims->data[0];
+  int rate = params->rate;
 
   // Matching GetWindowedOutputSize in TensorFlow.
   auto padding = params->padding;
-  auto computeOutSize = [padding](int imageSize, int filterSize) -> int {
+  auto computeOutSize = [padding](int imageSize, int filterSize, int rate) -> int {
     return padding == kTfLitePaddingSame
                ? imageSize
                : padding == kTfLitePaddingValid
-                     ? imageSize - 2 * (filterSize - 1)
+                     ? imageSize - rate * (filterSize - 1)
                      : 0;
   };
 
-  int outWidth = computeOutSize(width, filter_width);
-  int outHeight = computeOutSize(height, filter_height);
+  int outWidth = computeOutSize(width, filter_width, rate);
+  int outHeight = computeOutSize(height, filter_height, rate);
 
   data->padding.height =
       ComputePadding(1, height, (filter_height - 1) * params->rate + 1, outHeight);
