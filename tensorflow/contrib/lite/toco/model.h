@@ -128,7 +128,8 @@ enum class OperatorType {
   kReorderAxes,
   // For PRelu
   kTensorFlowAbs,
-  kPRelu
+  kPRelu,
+  kDilatedConv
 };
 
 // Helper to deal with TensorFlow arrays using a different ordering of
@@ -892,6 +893,21 @@ struct TransposeConvOperator : Operator {
   int out_shape_H = 0;
   int out_shape_W = 0;
   int out_shape_C = 0;
+};
+
+// Inputs:
+//   inputs[0]: required: the input activations array
+//   inputs[1]: required: the Conv weights
+//   channel.
+//
+// Outputs:
+//   outputs[0]: required: the output activations array
+//
+// TensorFlow equivalent: atrous_conv2d
+struct DilatedConvOperator : Operator {
+  DilatedConvOperator() : Operator(OperatorType::kDilatedConv) {}
+  Padding padding;
+  int rate = 1;
 };
 
 // Given a tensor input, this operation calculates element-wise exponential

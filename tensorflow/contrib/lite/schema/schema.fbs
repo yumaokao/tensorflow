@@ -126,6 +126,7 @@ enum BuiltinOperator : byte {
   QUANTIZE = 60,
   TRANSPOSE_CONV = 61,
   PRELU = 62,
+  DILATED_CONV = 63,
 }
 
 // Options for the builtin operators.
@@ -167,6 +168,7 @@ union BuiltinOptions {
   SplitOptions,
   DepthToSpaceOptions,
   TransposeConvOptions,
+  DilatedConvOptions,
 }
 
 enum Padding : byte { SAME, VALID }
@@ -195,6 +197,12 @@ table TransposeConvOptions {
   out_shape_H:int;
   out_shape_W:int;
   out_shape_C:int;
+  fused_activation_function:ActivationFunctionType;
+}
+
+table DilatedConvOptions {
+  padding:Padding;
+  rate:int;
   fused_activation_function:ActivationFunctionType;
 }
 

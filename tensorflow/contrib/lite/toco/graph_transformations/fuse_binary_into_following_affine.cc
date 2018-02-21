@@ -227,7 +227,8 @@ bool FuseBinaryIntoFollowingAffine::Run(Model* model, std::size_t op_index) {
   if (following_op->type != OperatorType::kConv &&
       following_op->type != OperatorType::kFullyConnected &&
       following_op->type != OperatorType::kDepthwiseConv &&
-      following_op->type != OperatorType::kTransposeConv) {
+      following_op->type != OperatorType::kTransposeConv &&
+      following_op->type != OperatorType::kDilatedConv) {
     AddMessageF(
         "Not fusing %s because the following %s is not of one of the supported "
         "types",
