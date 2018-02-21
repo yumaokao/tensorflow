@@ -53,6 +53,7 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kMean ||
          type == OperatorType::kTransposeConv ||
          type == OperatorType::kPRelu ||
+         type == OperatorType::kLeakyRelu ||
          type == OperatorType::kDilatedConv ||
          type == OperatorType::kDepthToSpace || type == OperatorType::kLstmCell;
 }

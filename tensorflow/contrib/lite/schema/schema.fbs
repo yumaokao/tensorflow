@@ -127,6 +127,7 @@ enum BuiltinOperator : byte {
   TRANSPOSE_CONV = 61,
   PRELU = 62,
   DILATED_CONV = 63,
+  LEAKYRELU = 64,
 }
 
 // Options for the builtin operators.

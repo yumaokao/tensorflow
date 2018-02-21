@@ -182,6 +182,7 @@ DECLARE_GRAPH_TRANSFORMATION(ResolveMultiplyByZero)
 DECLARE_GRAPH_TRANSFORMATION(Dequantize)
 DECLARE_GRAPH_TRANSFORMATION(ResolvePRelu)
 DECLARE_GRAPH_TRANSFORMATION(ResolveDilatedConv)
+DECLARE_GRAPH_TRANSFORMATION(ResolveLeakyRelu)
 
 class ResolveReshapeAttributes : public GraphTransformation {
  public:

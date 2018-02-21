@@ -246,6 +246,7 @@ cc_library(
         "graph_transformations/unroll_batch_matmul.cc",
         "graph_transformations/resolve_prelu.cc",
         "graph_transformations/resolve_dilated_conv.cc",
+        "graph_transformations/resolve_leakyrelu.cc",
     ],
     hdrs = [
         "graph_transformations/graph_transformations.h",

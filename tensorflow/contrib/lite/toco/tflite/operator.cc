@@ -913,6 +913,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       "RSQRT", OperatorType::kTensorFlowRsqrt));
   ops.emplace_back(new SimpleOperator<PReluOperator>(
       "PRELU", OperatorType::kPRelu));
+  ops.emplace_back(new SimpleOperator<LeakyReluOperator>(
+      "LEAKYRELU", OperatorType::kLeakyRelu));
   // Simple Operators.
   ops.emplace_back(new SimpleOperator<TensorFlowAbsOperator>(
       "ABS", OperatorType::kTensorFlowAbs));

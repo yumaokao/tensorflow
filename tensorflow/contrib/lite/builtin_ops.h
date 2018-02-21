@@ -78,6 +78,7 @@ typedef enum {
   kTfLiteBuiltinTransposeConv = 61,
   kTfLiteBuiltinPrelu = 62,
   kTfLiteBuiltinDilatedConv = 63,
+  kTfLiteBuiltinLeakyrelu = 64,
 } TfLiteBuiltinOperator;
 
 #ifdef __cplusplus

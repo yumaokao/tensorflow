@@ -129,7 +129,8 @@ enum class OperatorType {
   // For PRelu
   kTensorFlowAbs,
   kPRelu,
-  kDilatedConv
+  kDilatedConv,
+  kLeakyRelu
 };
 
 // Helper to deal with TensorFlow arrays using a different ordering of
@@ -1046,8 +1047,15 @@ struct PReluOperator : Operator {
   PReluOperator() : Operator(OperatorType::kPRelu) {}
 };
 
-
-
+// Element-wise LeakyRelu operator:
+//
+// Inputs:
+//   inputs[0]: required: the left-hand side array
+//   inputs[1]: required: the right-hand side array
+//
+struct LeakyReluOperator : Operator {
+  LeakyReluOperator() : Operator(OperatorType::kLeakyRelu) {}
+};
 
 // Stacks a list of rank-R tensors into one rank-(R+1) tensor.
 //
