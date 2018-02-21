@@ -67,6 +67,12 @@ typedef struct {
 
 typedef struct {
   TfLitePadding padding;
+  int rate;
+  TfLiteFusedActivation activation;
+} TfLiteDilatedConvParams;
+
+typedef struct {
+  TfLitePadding padding;
   int stride_width;
   int stride_height;
   int filter_width;

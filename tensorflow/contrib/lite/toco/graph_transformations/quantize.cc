@@ -53,6 +53,8 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kMean ||
          type == OperatorType::kTransposeConv ||
          type == OperatorType::kPRelu ||
+         type == OperatorType::kLeakyRelu ||
+         type == OperatorType::kDilatedConv ||
          type == OperatorType::kDepthToSpace || type == OperatorType::kLstmCell;
 }
 
@@ -187,7 +189,8 @@ bool ChooseQuantizationForOperatorInput(
   if (op.type == OperatorType::kConv ||
       op.type == OperatorType::kDepthwiseConv ||
       op.type == OperatorType::kFullyConnected ||
-      op.type == OperatorType::kTransposeConv) {
+      op.type == OperatorType::kTransposeConv ||
+      op.type == OperatorType::kDilatedConv) {
     if (input_index == 2) {
       is_bias_vector = true;
       activations_input_index = 0;

@@ -29,7 +29,10 @@ typedef enum {
   kTfLiteBuiltinConcatenation = 2,
   kTfLiteBuiltinConv2d = 3,
   kTfLiteBuiltinDepthwiseConv2d = 4,
+  kTfLiteBuiltinDepthToSpace = 5,
+  kTfLiteBuiltinDequantize = 6,
   kTfLiteBuiltinEmbeddingLookup = 7,
+  kTfLiteBuiltinFloor = 8,
   kTfLiteBuiltinFullyConnected = 9,
   kTfLiteBuiltinHashtableLookup = 10,
   kTfLiteBuiltinL2Normalization = 11,
@@ -71,6 +74,11 @@ typedef enum {
   kTfLiteBuiltinExp = 47,
   kTfLiteBuiltinTopkV2 = 48,
   kTfLiteBuiltinSplit = 49,
+  kTfLiteBuiltinQuantize = 60,
+  kTfLiteBuiltinTransposeConv = 61,
+  kTfLiteBuiltinPrelu = 62,
+  kTfLiteBuiltinDilatedConv = 63,
+  kTfLiteBuiltinLeakyrelu = 64,
 } TfLiteBuiltinOperator;
 
 #ifdef __cplusplus

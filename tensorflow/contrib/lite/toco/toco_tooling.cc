@@ -104,6 +104,8 @@ void MakeGeneralGraphTransformationsSet(
   transformations->Add(new ResolveConstantDequantize);
   transformations->Add(new ResolveConstantQuantize);
   transformations->Add(new ResolvePRelu);
+  transformations->Add(new ResolveDilatedConv);
+  transformations->Add(new ResolveLeakyRelu);
 }
 
 bool SupportsQuantization(FileFormat format) {
