@@ -93,6 +93,7 @@ TfLiteStatus TFLiteRunner<T>::Run(const string batch_xs, const string batch_ys, 
   TF_LITE_ENSURE_STATUS(PrepareInputs(batch_xs.c_str()));
   // printf("PrepareInputs\n");
   // Invoke = Run
+  m_interpreter->SetNumThreads(4);
   TF_LITE_ENSURE_STATUS(m_interpreter->Invoke());
   // printf("Invoke\n");
   // Save outputs
