@@ -347,6 +347,18 @@ bool ChooseQuantizationForOperatorOutput(
         output, OperatorTypeName(op.type));
     return true;
   }
+  if (op.type == OperatorType::kAbs){
+        const auto& input_quantization_params =
+            model->GetArray(op.inputs[0]).GetQuantizationParams();
+        quantization_params->zero_point = 0;
+        quantization_params->scale = input_quantization_params.scale;
+        transformation->AddMessageF(
+            "Output array %s is produced by a %s operator. Set out_zeropoint=0, "
+            "out_scale=in_scale.",
+            output, OperatorTypeName(op.type));
+        return true;
+  }
+
   const MinMax& minmax = GetOrComputeMinMax(model, output);
   if (op.type == OperatorType::kLstmCell) {
     if (output_index == LstmCellOperator::STATE_OUTPUT ||
