@@ -25,10 +25,8 @@ limitations under the License.
 #include "tensorflow/contrib/lite/kernels/internal/optimized/optimized_ops.h"
 #include "tensorflow/contrib/lite/kernels/internal/quantization_util.h"
 #include "tensorflow/contrib/lite/kernels/internal/reference/reference_ops.h"
-#include "tensorflow/contrib/lite/kernels/internal/reference/reference_ops_int32.h"
 #include "tensorflow/contrib/lite/kernels/internal/tensor.h"
 #include "tensorflow/contrib/lite/kernels/kernel_util.h"
-#include "tensorflow/contrib/lite/kernels/fixed_util.h"
 #include "tensorflow/contrib/lite/kernels/op_macros.h"
 
 namespace tflite {

@@ -51,16 +51,24 @@ bool ResolveDilatedConv::Run(Model* model, std::size_t op_index) {
   AddMessageF("Searching Dilated Conv Pattern...\nFind SpaceToBatchND = %s", LogName(*space2batch_op));
 
   auto* conv_op  = static_cast<ConvOperator*>(GetOpWithInput(*model, space2batch_op->outputs[0]));
-  if (conv_op->type != OperatorType::kConv){
+  if (conv_op == nullptr) {
+    AddMessageF("Conv op Not found");
     return false;
   }
-  if (conv_op->stride_width != 1 || conv_op->stride_height != 1){
+  if (conv_op->type != OperatorType::kConv) {
+    return false;
+  }
+  if (conv_op->stride_width != 1 || conv_op->stride_height != 1) {
     return false;
   }
   AddMessageF("Find Conv=%s", LogName(*conv_op));
 
   auto* batch2space_op  = GetOpWithInput(*model, conv_op->outputs[0]);
-  if (batch2space_op->type != OperatorType::kBatchToSpaceND){
+  if (batch2space_op == nullptr) {
+    AddMessageF("BatchToSpace op Not found");
+    return false;
+  }
+  if (batch2space_op->type != OperatorType::kBatchToSpaceND) {
     return false;
   }
   AddMessageF("Find BatchToSpaceND = %s", LogName(*batch2space_op));

@@ -51,7 +51,11 @@ bool ResolveLeakyRelu::Run(Model* model, std::size_t op_index) {
   AddMessageF("Searching LeakyRelu Pattern...\nFind mul=%s", LogName(*mul_op));
 
   Operator* maximum_op = GetOpWithInput(*model, mul_op->outputs[0]);
-  if (maximum_op->type != OperatorType::kTensorFlowMaximum){
+  if (maximum_op == nullptr) {
+    AddMessageF("Maximum op Not found");
+    return false;
+  }
+  if (maximum_op->type != OperatorType::kTensorFlowMaximum) {
     return false;
   }
   AddMessageF("Find maximum=%s", LogName(*maximum_op));
