@@ -112,6 +112,11 @@ bool ParseTocoFlagsFromCommandLineFlags(
           "If true, ignore control dependency requirements in input TensorFlow "
           "GraphDef. Otherwise an error will be raised upon control dependency "
           "inputs."),
+      Flag("debug_disable_recurrent_cell_fusion",
+           parsed_flags.debug_disable_recurrent_cell_fusion.bind(),
+           parsed_flags.debug_disable_recurrent_cell_fusion.default_value(),
+           "If true, disable fusion of known identifiable cell subgraphs into "
+           "cells. This includes, for example, specific forms of LSTM cell."),
       Flag("partial_quant", parsed_flags.partial_quant.bind(),
            parsed_flags.partial_quant.default_value(),
            "If true, allow TOCO to create TF Lite with inference_type set as "
