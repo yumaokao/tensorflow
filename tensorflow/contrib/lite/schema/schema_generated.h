@@ -243,11 +243,12 @@ enum BuiltinOperator {
   BuiltinOperator_PRELU = 62,
   BuiltinOperator_DILATED_CONV = 63,
   BuiltinOperator_LEAKYRELU = 64,
+  BuiltinOperator_ABS = 65,
   BuiltinOperator_MIN = BuiltinOperator_ADD,
-  BuiltinOperator_MAX = BuiltinOperator_LEAKYRELU
+  BuiltinOperator_MAX = BuiltinOperator_ABS
 };
 
-inline BuiltinOperator (&EnumValuesBuiltinOperator())[55] {
+inline BuiltinOperator (&EnumValuesBuiltinOperator())[56] {
   static BuiltinOperator values[] = {
     BuiltinOperator_ADD,
     BuiltinOperator_AVERAGE_POOL_2D,
@@ -303,7 +304,8 @@ inline BuiltinOperator (&EnumValuesBuiltinOperator())[55] {
     BuiltinOperator_TRANSPOSE_CONV,
     BuiltinOperator_PRELU,
     BuiltinOperator_DILATED_CONV,
-    BuiltinOperator_LEAKYRELU
+    BuiltinOperator_LEAKYRELU,
+    BuiltinOperator_ABS
   };
   return values;
 }
@@ -375,6 +377,7 @@ inline const char **EnumNamesBuiltinOperator() {
     "PRELU",
     "DILATED_CONV",
     "LEAKYRELU",
+    "ABS",
     nullptr
   };
   return names;

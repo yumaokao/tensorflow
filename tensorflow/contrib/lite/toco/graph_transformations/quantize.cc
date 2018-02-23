@@ -55,7 +55,8 @@ bool SupportsQuantization(const Operator& op) {
          type == OperatorType::kPRelu ||
          type == OperatorType::kLeakyRelu ||
          type == OperatorType::kDilatedConv ||
-         type == OperatorType::kDepthToSpace || type == OperatorType::kLstmCell;
+         type == OperatorType::kDepthToSpace || type == OperatorType::kLstmCell ||
+         type == OperatorType::kAbs;
 }
 
 template <ArrayDataType A>

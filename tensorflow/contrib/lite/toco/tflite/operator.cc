@@ -916,8 +916,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
   ops.emplace_back(new SimpleOperator<LeakyReluOperator>(
       "LEAKYRELU", OperatorType::kLeakyRelu));
   // Simple Operators.
-  ops.emplace_back(new SimpleOperator<TensorFlowAbsOperator>(
-      "ABS", OperatorType::kTensorFlowAbs));
+  ops.emplace_back(new SimpleOperator<AbsOperator>(
+      "ABS", OperatorType::kAbs));
   ops.emplace_back(new SimpleOperator<DequantizeOperator>(
       "DEQUANTIZE", OperatorType::kDequantize));
   ops.emplace_back(new SimpleOperator<QuantizeOperator>(

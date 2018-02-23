@@ -144,6 +144,7 @@ cc_library(
         "prelu.cc",
         "dilated_conv.cc",
         "leakyrelu.cc",
+        "abs.cc",
     ],
     hdrs = [
         "padding.h",

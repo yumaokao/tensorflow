@@ -670,7 +670,7 @@ void ConvertAbsOperator(const NodeDef& node,
                         Model* model) {
   CHECK_EQ(node.op(), "Abs");
   CheckInputsCount(node, tf_import_flags, 1);
-  auto* op = new TensorFlowAbsOperator;
+  auto* op = new AbsOperator;
   op->inputs.push_back(node.input(0));
   op->outputs.push_back(node.name());
   model->operators.emplace_back(op);

@@ -57,25 +57,37 @@ bool ResolvePRelu::Run(Model* model, std::size_t op_index) {
 
 
   auto abs_it = model->operators.begin() + op_index;
-  if (abs_it->get()->type != OperatorType::kTensorFlowAbs) {
+  if (abs_it->get()->type != OperatorType::kAbs) {
     return false;
   }
   auto* abs_op = abs_it->get();
   AddMessageF("Searching PRelu Pattern...\nFind abs=%s", LogName(*abs_op));
 
   Operator* sub_op  = GetOpWithInput(*model, abs_op->outputs[0]);
+  if (sub_op == nullptr){
+    AddMessageF("Sub op Not found");
+    return false;
+  }
   if (sub_op->type != OperatorType::kSub){
     return false;
   }
   AddMessageF("Find sub=%s", LogName(*sub_op));
 
   Operator* mul_op  = GetOpWithInput(*model, sub_op->outputs[0]);
+  if (mul_op == nullptr){
+    AddMessageF("Mul op Not found");
+    return false;
+  }
   if (mul_op->type != OperatorType::kMul){
     return false;
   }
   AddMessageF("Find mul=%s", LogName(*mul_op));
 
   Operator* mul1_op = GetOpWithInput(*model, mul_op->outputs[0]);
+  if (mul1_op == nullptr){
+    AddMessageF("Mul1 op Not found");
+    return false;
+  }
   if (mul1_op->type != OperatorType::kMul){
     if (mul1_op-> type == OperatorType::kAdd){
         // Only one mul case
@@ -93,6 +105,10 @@ bool ResolvePRelu::Run(Model* model, std::size_t op_index) {
       add_op = GetOpWithInput(*model, mul1_op->outputs[0]);
   }
 
+  if (add_op == nullptr){
+    AddMessageF("Add op Not found");
+    return false;
+  }
   if (add_op->type != OperatorType::kAdd){
     return false;
   }
@@ -107,6 +123,10 @@ bool ResolvePRelu::Run(Model* model, std::size_t op_index) {
   const int index_mul_input_for_addop  = add_op_input_ops[1]->type == OperatorType::kMul  ? 1 : 0;
 
   Operator* relu_op = GetOpWithOutput(*model, add_op->inputs[index_relu_input_for_addop]);
+  if (relu_op == nullptr){
+    AddMessageF("Relu op Not found");
+    return false;
+  }
   if (relu_op->type != OperatorType::kRelu){
     return false;
   }

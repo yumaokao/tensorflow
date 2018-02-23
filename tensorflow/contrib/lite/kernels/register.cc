@@ -69,6 +69,7 @@ TfLiteRegistration* Register_TRANSPOSE_CONV();
 TfLiteRegistration* Register_PRELU();
 TfLiteRegistration* Register_DILATED_CONV();
 TfLiteRegistration* Register_LEAKYRELU();
+TfLiteRegistration* Register_ABS();
 
 BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_RELU, Register_RELU());
@@ -126,6 +127,7 @@ BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_PRELU, Register_PRELU());
   AddBuiltin(BuiltinOperator_DILATED_CONV, Register_DILATED_CONV());
   AddBuiltin(BuiltinOperator_LEAKYRELU, Register_LEAKYRELU());
+  AddBuiltin(BuiltinOperator_ABS, Register_ABS());
 }
 
 TfLiteRegistration* BuiltinOpResolver::FindOp(
