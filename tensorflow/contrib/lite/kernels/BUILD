@@ -143,7 +143,6 @@ cc_library(
         "quantize.cc",
         "transpose_conv.cc",
         "prelu.cc",
-        "dilated_conv.cc",
         "leakyrelu.cc",
         "abs.cc",
     ],

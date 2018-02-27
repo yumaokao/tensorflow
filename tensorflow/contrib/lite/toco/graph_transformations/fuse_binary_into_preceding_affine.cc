@@ -239,8 +239,7 @@ bool FuseBinaryIntoPrecedingAffine::Run(Model* model, std::size_t op_index) {
   if (preceding_op->type != OperatorType::kConv &&
       preceding_op->type != OperatorType::kFullyConnected &&
       preceding_op->type != OperatorType::kDepthwiseConv &&
-      preceding_op->type != OperatorType::kTransposeConv &&
-      preceding_op->type != OperatorType::kDilatedConv) {
+      preceding_op->type != OperatorType::kTransposeConv) {
     AddMessageF(
         "Not fusing %s because the preceding %s is not of one of the supported "
         "types",

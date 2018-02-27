@@ -112,31 +112,6 @@ class TransposeConvolution
   }
 };
 
-class DilatedConvolution
-    : public BuiltinOperator<DilatedConvOperator, ::tflite::DilatedConvOptions,
-                             ::tflite::BuiltinOptions_DilatedConvOptions> {
- public:
-  using BuiltinOperator::BuiltinOperator;
-
-  flatbuffers::Offset<TfLiteOptions> WriteOptions(
-      const TocoOperator& op,
-      flatbuffers::FlatBufferBuilder* builder) const override {
-    auto padding = Padding::Serialize(op.padding.type);
-    auto activation_function =
-        ActivationFunction::Serialize(op.fused_activation_function);
-    return ::tflite::CreateDilatedConvOptions(*builder, padding, op.rate,
-                                              activation_function);
-  }
-
-  void ReadOptions(const TfLiteOptions& options,
-                   TocoOperator* op) const override {
-    op->padding.type = Padding::Deserialize(options.padding());
-    op->rate = options.rate();
-    op->fused_activation_function =
-        ActivationFunction::Deserialize(options.fused_activation_function());
-  }
-};
-
 class DepthwiseConvolution
     : public BuiltinOperator<DepthwiseConvOperator,
                              ::tflite::DepthwiseConv2DOptions,
@@ -895,8 +870,6 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
   // Add BuiltinOp
   ops.emplace_back(
       new TransposeConvolution(::tflite::BuiltinOperator_TRANSPOSE_CONV, OperatorType::kTransposeConv));
-  ops.emplace_back(
-      new DilatedConvolution(::tflite::BuiltinOperator_DILATED_CONV, OperatorType::kDilatedConv));
 
   // Custom Operators.
   ops.emplace_back(new Cast("CAST", OperatorType::kCast));

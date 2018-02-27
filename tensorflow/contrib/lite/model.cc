@@ -294,17 +294,6 @@ void* ParseOpData(const Operator* op, BuiltinOperator op_type,
       builtin_data = reinterpret_cast<void*>(params);
       break;
     }
-    case BuiltinOperator_DILATED_CONV: {
-      TfLiteDilatedConvParams* params = MallocPOD<TfLiteDilatedConvParams>();
-      if (auto* dilated_conv_params = op->builtin_options_as_DilatedConvOptions()) {
-        params->padding = parse_padding(dilated_conv_params->padding());
-        params->rate = dilated_conv_params->rate();
-        params->activation =
-            parse_activation(dilated_conv_params->fused_activation_function());
-      }
-      builtin_data = reinterpret_cast<void*>(params);
-      break;
-    }
     case BuiltinOperator_TANH:
     case BuiltinOperator_LOGISTIC:
     case BuiltinOperator_RELU:
