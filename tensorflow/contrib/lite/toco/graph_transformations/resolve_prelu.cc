@@ -218,8 +218,8 @@ bool ResolvePRelu::Run(Model* model, std::size_t op_index) {
   model->operators.erase(FindOperator(model, add_op));
   model->operators.erase(FindOperator(model, relu_op));
 
-  //model->operators.erase(FindOperator(model, abs_op));
-  model->operators.erase(abs_it);
+  model->operators.erase(FindOperator(model, abs_op));
+  //model->operators.erase(abs_it);
   return true;
 
 }
