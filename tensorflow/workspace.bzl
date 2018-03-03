@@ -475,11 +475,11 @@ def tf_workspace(path_prefix="", tf_repo_name=""):
   tf_http_archive(
       name = "llvm",
       urls = [
-          "https://mirror.bazel.build/github.com/llvm-mirror/llvm/archive/fc8ba497cd1a1af4ecae19a5b64bdbd71e065e14.tar.gz",
-          "https://github.com/llvm-mirror/llvm/archive/fc8ba497cd1a1af4ecae19a5b64bdbd71e065e14.tar.gz",
+          "https://mirror.bazel.build/github.com/llvm-mirror/llvm/archive/9a6e78e4adc959d2825f7af35b4ed0e09394d840.tar.gz",
+          "https://github.com/llvm-mirror/llvm/archive/9a6e78e4adc959d2825f7af35b4ed0e09394d840.tar.gz",
       ],
-      sha256 = "f5721d9cc18a9109c9e9f847f48e69b710b961cee83e6691227e310cb3b5da58",
-      strip_prefix = "llvm-fc8ba497cd1a1af4ecae19a5b64bdbd71e065e14",
+      sha256 = "7990b4d446de971e0acc481942920452a182d2f87a8164bdc117fd9b9ace591d",
+      strip_prefix = "llvm-9a6e78e4adc959d2825f7af35b4ed0e09394d840",
       build_file = str(Label("//third_party/llvm:llvm.BUILD")),
   )
 
@@ -666,15 +666,12 @@ def tf_workspace(path_prefix="", tf_repo_name=""):
   tf_http_archive(
       name = "cub_archive",
       urls = [
-          "https://mirror.bazel.build/github.com/NVlabs/cub/archive/1.7.4.zip",
-          "https://github.com/NVlabs/cub/archive/1.7.4.zip",
+          "https://mirror.bazel.build/github.com/NVlabs/cub/archive/1.8.0.zip",
+          "https://github.com/NVlabs/cub/archive/1.8.0.zip",
       ],
-      sha256 = "20a1a39fd97e5da7f40f5f2e7fd73fd2ea59f9dc4bb8a6c5f228aa543e727e31",
-      strip_prefix = "cub-1.7.4",
+      sha256 = "6bfa06ab52a650ae7ee6963143a0bbc667d6504822cbd9670369b598f18c58c3",
+      strip_prefix = "cub-1.8.0",
       build_file = str(Label("//third_party:cub.BUILD")),
-      # TODO: remove the patch when upstream fix is accepted and released.
-      #       PR with a fix: https://github.com/NVlabs/cub/pull/125
-      patch_file = str(Label("//third_party/cub:fix_compilation_in_clang.patch")),
   )
 
   tf_http_archive(

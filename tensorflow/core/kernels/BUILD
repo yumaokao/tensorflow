@@ -4155,6 +4155,7 @@ cc_library(
         ":as_string_op",
         ":base64_ops",
         ":reduce_join_op",
+        ":regex_replace_op",
         ":string_join_op",
         ":string_split_op",
         ":string_to_hash_bucket_op",
@@ -4187,6 +4188,12 @@ tf_kernel_library(
     name = "string_join_op",
     prefix = "string_join_op",
     deps = STRING_DEPS,
+)
+
+tf_kernel_library(
+    name = "regex_replace_op",
+    prefix = "regex_replace_op",
+    deps = STRING_DEPS + ["@com_googlesource_code_re2//:re2"],
 )
 
 tf_kernel_library(
@@ -5063,6 +5070,7 @@ filegroup(
             "scatter_nd_op*",
             "mutex_ops.*",
             "batch_kernels.*",
+            "regex_replace_op.cc",
         ],
     ),
     visibility = ["//visibility:public"],
@@ -5128,7 +5136,6 @@ tf_kernel_library(
     srcs = [
         "dequantize_op.cc",
         "meta_support.cc",
-        "quantization_utils.cc",
         "quantize_down_and_shrink_range.cc",
         "quantize_op.cc",
         "quantized_activation_ops.cc",
@@ -5149,7 +5156,6 @@ tf_kernel_library(
     ],
     hdrs = [
         "meta_support.h",
-        "quantization_utils.h",
         "reference_gemm.h",
     ],
     deps = [
@@ -5160,6 +5166,7 @@ tf_kernel_library(
         ":image_resizer_state",
         ":ops_util",
         ":pooling_ops",
+        ":quantization_utils",
         "//tensorflow/core:array_ops_op_lib",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
@@ -5707,6 +5714,16 @@ tf_kernel_library(
 )
 
 cc_library(
+    name = "quantization_utils",
+    srcs = ["quantization_utils.cc"],
+    hdrs = ["quantization_utils.h"],
+    deps = [
+        "//tensorflow/core:framework",
+        "@gemmlowp",
+    ],
+)
+
+cc_library(
     name = "remote_fused_graph_execute_utils",
     srcs = [
         "i_remote_fused_graph_ops_definitions.cc",
@@ -6081,7 +6098,6 @@ cc_library(
     srcs = [
         "cwise_ops_common.cc",
         "meta_support.cc",
-        "quantization_utils.cc",
     ],
     hdrs = [
         "cwise_ops.h",
@@ -6090,10 +6106,10 @@ cc_library(
         "cwise_ops_gpu_gradients.cu.h",
         "cwise_ops_gradients.h",
         "meta_support.h",
-        "quantization_utils.h",
     ],
     deps = [
         ":bounds_check",
+        ":quantization_utils",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//third_party/eigen3",

@@ -126,7 +126,9 @@ cc_library(
         ":bfloat16_support",
         ":hlo",
         ":hlo_dataflow_analysis",
+        ":hlo_dce",
         ":hlo_pass",
+        ":tuple_simplifier",
         "//tensorflow/compiler/xla:shape_tree",
         "//tensorflow/compiler/xla:shape_util",
         "//tensorflow/compiler/xla:util",
@@ -1206,6 +1208,41 @@ tf_cc_test(
         "//tensorflow/compiler/xla:xla_data_proto",
         "//tensorflow/compiler/xla/tests:hlo_verified_test_base",
         "//tensorflow/compiler/xla/tests:xla_internal_test_main",  # fixdeps: keep
+        "//tensorflow/core:lib",
+        "//tensorflow/core:test",
+    ],
+)
+
+cc_library(
+    name = "conditional_simplifier",
+    srcs = ["conditional_simplifier.cc"],
+    hdrs = ["conditional_simplifier.h"],
+    deps = [
+        ":call_inliner",
+        ":hlo",
+        ":hlo_pass",
+        "//tensorflow/compiler/xla:literal_util",
+        "//tensorflow/compiler/xla:status_macros",
+        "//tensorflow/compiler/xla:statusor",
+        "//tensorflow/compiler/xla:types",
+        "//tensorflow/compiler/xla:util",
+        "//tensorflow/core:lib",
+    ],
+)
+
+tf_cc_test(
+    name = "conditional_simplifier_test",
+    srcs = ["conditional_simplifier_test.cc"],
+    deps = [
+        ":conditional_simplifier",
+        ":hlo",
+        ":hlo_matchers",
+        "//tensorflow/compiler/xla:literal_util",
+        "//tensorflow/compiler/xla:shape_util",
+        "//tensorflow/compiler/xla:test",
+        "//tensorflow/compiler/xla:types",
+        "//tensorflow/compiler/xla:xla_data_proto",
+        "//tensorflow/compiler/xla/tests:hlo_verified_test_base",
         "//tensorflow/core:lib",
         "//tensorflow/core:test",
     ],
