@@ -174,7 +174,6 @@ cc_library(
         "transpose.cc",
         "unidirectional_sequence_lstm.cc",
         "unidirectional_sequence_rnn.cc",
-        "dequantize.cc",
         "quantize.cc",
         "transpose_conv.cc",
         "prelu.cc",

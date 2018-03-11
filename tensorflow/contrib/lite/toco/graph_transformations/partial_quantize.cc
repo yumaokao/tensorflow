@@ -198,7 +198,7 @@ bool ChooseQuantizationForOperatorInput(
   }
 
   const MinMax& minmax = GetOrComputeMinMax(model, input);
-  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(model->flags, minmax,
+  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(minmax,
                                                          quantization_params);
   transformation->AddMessageF(
       "For input array %s with min=%g"
@@ -303,7 +303,7 @@ bool ChooseQuantizationForOperatorOutput(
     return true;
   }
   const MinMax& minmax = GetOrComputeMinMax(model, output);
-  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(model->flags, minmax,
+  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(minmax,
                                                          quantization_params);
   *quantized_data_type = ArrayDataType::kUint8;
   transformation->AddMessageF(
