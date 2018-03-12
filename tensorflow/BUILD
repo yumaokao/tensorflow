@@ -401,7 +401,6 @@ filegroup(
         exclude = [
             "**/METADATA",
             "**/OWNERS",
-            "**/gcs_smoke_test/**",
             "g3doc/sitemap.md",
         ],
     ),
