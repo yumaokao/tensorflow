@@ -140,6 +140,10 @@ final class NativeInterpreterWrapper implements AutoCloseable {
     useNNAPI(interpreterHandle, useNNAPI);
   }
 
+  void setNumThreads(int numRecommendedThreads) {
+    numThreads(interpreterHandle, numRecommendedThreads);
+  }
+
   /** Gets index of an input given its name. */
   int getInputIndex(String name) {
     if (inputsIndexes == null) {
@@ -261,6 +265,27 @@ final class NativeInterpreterWrapper implements AutoCloseable {
     return (inferenceDurationNanoseconds < 0) ? null : inferenceDurationNanoseconds;
   }
 
+  /**
+   * Gets the dimensions of an input. It throws IllegalArgumentException if input index is invalid.
+   */
+  int[] getInputDims(int index) {
+    return getInputDims(interpreterHandle, index, -1);
+  }
+
+  /**
+   * Gets the dimensions of an input. If numBytes >= 0, it will check whether num of bytes match the
+   * input.
+   */
+  private static native int[] getInputDims(long interpreterHandle, int inputIdx, int numBytes);
+
+  /** Gets the type of an output. It throws IllegalArgumentException if output index is invalid. */
+  String getOutputDataType(int index) {
+    int type = getOutputDataType(interpreterHandle, index);
+    return DataType.fromNumber(type).toStringName();
+  }
+
+  private static native int getOutputDataType(long interpreterHandle, int outputIdx);
+
   private static final int ERROR_BUFFER_SIZE = 512;
 
   private long errorHandle;
@@ -287,6 +312,8 @@ final class NativeInterpreterWrapper implements AutoCloseable {
 
   private static native void useNNAPI(long interpreterHandle, boolean state);
 
+  private static native void numThreads(long interpreterHandle, int numRecommendedThreads);
+
   private static native long createErrorReporter(int size);
 
   private static native long createModel(String modelPathOrBuffer, long errorHandle);
@@ -296,8 +323,6 @@ final class NativeInterpreterWrapper implements AutoCloseable {
   private static native long createInterpreter(long modelHandle, long errorHandle);
 
   private static native void delete(long errorHandle, long modelHandle, long interpreterHandle);
-
-  private static native int[] getInputDims(long interpreterHandle, int inputIdx, int numBytes);
 
   static {
     TensorFlowLite.init();

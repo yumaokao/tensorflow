@@ -763,6 +763,7 @@ class CreateOpFromTFOperationTest(test_util.TensorFlowTestCase):
     self.assertEqual(g.get_operation_by_name("myop"), op)
     self.assertEqual(g.get_tensor_by_name("myop:0"), op.outputs[0])
 
+  @test_util.enable_c_shapes
   def testShape(self):
     g = ops.Graph()
     with g.as_default():
@@ -1765,7 +1766,7 @@ class ControlDependenciesTest(test_util.TensorFlowTestCase):
 
     if context.executing_eagerly():
       a = constant_op.constant(1.0)
-      b = future()
+      b = future
       with ops.control_dependencies([a, b]):
         c = constant_op.constant(3.0)
       self.assertEqual(future.calls, 1)
@@ -2918,6 +2919,9 @@ class EnableEagerExecutionTest(test_util.TensorFlowTestCase):
     with self.assertRaisesRegexp(ValueError, "device_policy must be one of"):
       c = config_pb2.ConfigProto()
       ops.enable_eager_execution(c, c)
+    with self.assertRaisesRegexp(ValueError, "execution_mode must be one of"):
+      c = config_pb2.ConfigProto()
+      ops.enable_eager_execution(c, execution_mode=c)
 
 
 if __name__ == "__main__":

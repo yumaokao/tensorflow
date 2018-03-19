@@ -455,7 +455,7 @@ class Converter {
       if (trt_tensors_.count(name)) {
         inputs.push_back(trt_tensors_.at(name));
       } else {
-        LOG(FATAL) << "input: " << name << " not availabled for node at, "
+        LOG(FATAL) << "input: " << name << " not available for node at, "
                    << node_def.name();
       }
     }
@@ -884,7 +884,7 @@ tensorflow::Status BinaryTensorOpWeight(
   // default to element-wise
   auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
-  // TODO(jie): maybe use a permuatation instead to support more cases;
+  // TODO(jie): maybe use a permutation instead to support more cases;
   bool permutation_flag = false;
 
   if (weights.count() == 1) {
@@ -1134,9 +1134,9 @@ tensorflow::Status BinaryTensorOpTensor(
   CHECK_EQ_TYPE(tensor_r->getType(), dtype);
   auto op_pair = ops.find(node_def.op());
   if (op_pair == ops.end())
-    return tensorflow::errors::Unimplemented(
-        "binary op: " + node_def.op() +
-        " not supported at: " + node_def.name());
+    return tensorflow::errors::Unimplemented("binary op: " + node_def.op() +
+                                             " not supported at: " +
+                                             node_def.name());
 
   nvinfer1::IElementWiseLayer* layer = ctx.network()->addElementWise(
       *const_cast<nvinfer1::ITensor*>(tensor_l),
@@ -1498,7 +1498,7 @@ tensorflow::Status ConvertConst(Converter& ctx,
           weights_tensor.int_val().begin(),
           weights_tensor.int_val()
               .end());  //  make a local copy first to flatten
-                        //  doesn't have to be contigous
+                        //  doesn't have to be contiguous
       memcpy(dst, tensor_data.data(), len_tensor);  // store into weight store
       weights = TRT_ShapedWeights(dtype, dst, scalar_shape);
     }
@@ -2212,7 +2212,7 @@ tensorflow::Status InjectCalibrationNode(tensorrt::convert::SubGraphParams& s) {
   std::list<tensorflow::Node*> order;
   for (tensorflow::Node* node : order_vec) {
     if (s.subgraph_node_ids.count(node->id())) {
-      order.push_front(node);  // we want topological order to contstruct the
+      order.push_front(node);  // we want topological order to construct the
       // network layer by layer
     }
   }

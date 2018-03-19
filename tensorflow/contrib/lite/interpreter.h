@@ -24,7 +24,6 @@ limitations under the License.
 #include "tensorflow/contrib/lite/context.h"
 #include "tensorflow/contrib/lite/error_reporter.h"
 #include "tensorflow/contrib/lite/memory_planner.h"
-#include "tensorflow/contrib/lite/schema/schema_generated.h"
 
 namespace tflite {
 
@@ -134,18 +133,34 @@ class Interpreter {
   // This variant assumes an external buffer has been allocated of size
   // bytes. The lifetime of buffer must be ensured to be greater or equal
   // to Interpreter.
-  TfLiteStatus SetTensorParametersReadOnly(
+  inline TfLiteStatus SetTensorParametersReadOnly(
       int tensor_index, TfLiteType type, const char* name,
       const std::vector<int>& dims, TfLiteQuantizationParams quantization,
+      const char* buffer, size_t bytes,
+      const Allocation* allocation = nullptr) {
+    return SetTensorParametersReadOnly(tensor_index, type, name, dims.size(),
+                                       dims.data(), quantization, buffer, bytes,
+                                       allocation);
+  };
+
+  TfLiteStatus SetTensorParametersReadOnly(
+      int tensor_index, TfLiteType type, const char* name, const int rank,
+      const int* dims, TfLiteQuantizationParams quantization,
       const char* buffer, size_t bytes, const Allocation* allocation = nullptr);
 
   // Set description of inputs/outputs/data/fptrs for node `node_index`.
   // This variant assumes an external buffer has been allocated of size
   // bytes. The lifetime of buffer must be ensured to be greater or equal
   // to Interpreter.
-  TfLiteStatus SetTensorParametersReadWrite(
+  inline TfLiteStatus SetTensorParametersReadWrite(
       int tensor_index, TfLiteType type, const char* name,
-      const std::vector<int>& dims, TfLiteQuantizationParams quantization);
+      const std::vector<int>& dims, TfLiteQuantizationParams quantization) {
+    return SetTensorParametersReadWrite(tensor_index, type, name, dims.size(),
+                                        dims.data(), quantization);
+  }
+  TfLiteStatus SetTensorParametersReadWrite(
+      int tensor_index, TfLiteType type, const char* name, const int rank,
+      const int* dims, TfLiteQuantizationParams quantization);
 
   // Functions to access tensor data
 
@@ -258,12 +273,6 @@ class Interpreter {
   // parts of the graph themselves. After this is called, the graph may
   // contain new nodes that replace 1 more nodes.
   TfLiteStatus ModifyGraphWithDelegate(TfLiteDelegate* delegate);
-
-  // WARNING: This is a deprecated interface and will be removed as soon as
-  // possible.  Please do not use it.
-  // TODO(impjdi): Remove this interface after resolving dependencies.
-  void set_model(const Model* model) { model_ = const_cast<Model*>(model); }
-  Model* model() const { return model_; }
 
   // Ensure the data in `tensor.data` is readable. In case delegate is used,
   // it might require to copy the data from delegate buffer to raw memory.
@@ -472,7 +481,7 @@ class Interpreter {
   // During Invoke(), Interpreter will allocate input tensors first, which are
   // known to be fixed size. Then it will allocate outputs from nodes as many
   // as possible. When there is a node that produces dynamic sized tensor.
-  // Intepreter will stop allocating tensors, set the value of next allocate
+  // Interpreter will stop allocating tensors, set the value of next allocate
   // node id, and execute the node to generate the output tensor before continue
   // to allocate successors. This process repeats until all nodes are executed.
   // NOTE: this relies on the order of nodes that is in topological order.
@@ -493,11 +502,6 @@ class Interpreter {
   std::unique_ptr<NNAPIDelegate> nnapi_delegate_;
 
   std::unique_ptr<MemoryPlanner> memory_planner_;
-
-  // WARNING: This is a deprecated interface and will be removed as soon as
-  // possible.  Please do not use it.
-  // TODO(impjdi): Remove this interface after resolving dependencies.
-  Model* model_ = nullptr;
 };
 
 }  // namespace tflite

@@ -369,9 +369,12 @@ bool HardcodeMinMax::Run(Model* model, std::size_t op_index) {
       changed = HardcodeMinMaxForResizeBilinear(model, op);
       break;
 
+    case OperatorType::kStridedSlice:
     case OperatorType::kSqueeze:
     case OperatorType::kTensorFlowReshape:
     case OperatorType::kPad:
+    case OperatorType::kGather:
+    case OperatorType::kTranspose:
       changed = HardcodeMinMaxFromFirstInput(model, op);
       break;
 

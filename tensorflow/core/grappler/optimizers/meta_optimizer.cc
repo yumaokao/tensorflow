@@ -58,7 +58,7 @@ std::unique_ptr<GraphOptimizer> MetaOptimizer::NewOptimizer(
     graph_optimizer.reset(new ModelPruner());
   }
   if (optimizer == "function") {
-    graph_optimizer.reset(new FunctionOptimizer());
+    graph_optimizer.reset(new FunctionOptimizer(cfg_.function_optimization()));
   }
   if (optimizer == "constfold") {
     graph_optimizer.reset(new ConstantFolding(cpu_device_));
@@ -94,9 +94,9 @@ Status MetaOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
     if (!cfg_.disable_model_pruning()) {
       optimizers.push_back(std::unique_ptr<GraphOptimizer>(new ModelPruner()));
     }
-    if (cfg_.function_optimization() == RewriterConfig::ON) {
-      optimizers.push_back(
-          std::unique_ptr<GraphOptimizer>(new FunctionOptimizer()));
+    if (cfg_.function_optimization() != RewriterConfig::OFF) {
+      optimizers.push_back(std::unique_ptr<GraphOptimizer>(
+          new FunctionOptimizer(cfg_.function_optimization())));
     }
     if (cfg_.constant_folding() != RewriterConfig::OFF) {
       optimizers.push_back(std::unique_ptr<GraphOptimizer>(
@@ -231,7 +231,7 @@ void MetaOptimizer::Feedback(Cluster* cluster, const GrapplerItem& item,
 bool MetaOptimizerEnabled(const RewriterConfig& cfg) {
   return !cfg.disable_model_pruning() ||
          cfg.layout_optimizer() != RewriterConfig::OFF ||
-         cfg.function_optimization() == RewriterConfig::ON ||
+         cfg.function_optimization() != RewriterConfig::OFF ||
          cfg.constant_folding() != RewriterConfig::OFF ||
          cfg.arithmetic_optimization() != RewriterConfig::OFF ||
          cfg.loop_optimization() == RewriterConfig::ON ||
