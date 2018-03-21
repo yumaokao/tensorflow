@@ -74,6 +74,7 @@ static TfLiteStatus PrepareInputs(tflite::Interpreter* interpreter,
   cnpy::NpyArray arr = cnpy::npy_load(batch_xs);
   T* dst_data = interpreter->typed_tensor<T>(interpreter->inputs()[0]);
   T* src_data = arr.data<T>();
+
   if (!dst_data || !src_data)
     return kTfLiteError;
 
@@ -104,7 +105,6 @@ static TfLiteStatus ClearOutputs(tflite::Interpreter* interpreter, T type) {
 static TfLiteStatus CompareOutputs_UINT8(tflite::Interpreter* interpreter,
                                    const char* batch_ys, bool ignore) {
   constexpr int kAbsoluteThreshold = 2; // 1e-4f;
-
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
   cnpy::NpyArray arr = cnpy::npy_load(batch_ys);
   uint8_t* out_data = interpreter->typed_tensor<uint8_t>(interpreter->outputs()[0]);
@@ -146,7 +146,6 @@ static TfLiteStatus CompareOutputs_FLOAT(tflite::Interpreter* interpreter,
                                    const char* batch_ys, bool ignore) {
   constexpr double kRelativeThreshold = 1e-2f;
   constexpr double kAbsoluteThreshold = 1e-4f;
-
   TfLiteTensor* tensor = interpreter->tensor(interpreter->outputs()[0]);
   cnpy::NpyArray arr = cnpy::npy_load(batch_ys);
   float* out_data = interpreter->typed_tensor<float>(interpreter->outputs()[0]);
@@ -177,9 +176,8 @@ static TfLiteStatus CompareOutputs_FLOAT(tflite::Interpreter* interpreter,
   return result;
 }
 
-template <typename T>
 TfLiteStatus Compare(const char* filename, bool use_nnapi,
-         const char* batch_xs, const char* batch_ys, bool ignore, string typestr, T type) {
+         const char* batch_xs, const char* batch_ys, bool ignore, string infer_type, string input_type) {
   // Read tflite
   auto model = tflite::FlatBufferModel::BuildFromFile(filename);
   if (!model) FATAL("Cannot read file %s\n", filename);
@@ -195,23 +193,33 @@ TfLiteStatus Compare(const char* filename, bool use_nnapi,
   interpreter->UseNNAPI(use_nnapi);
 
   // Reshape with batch
-  ReshapeInputs(interpreter.get(), batch_xs, type);
-
+  if (input_type == "UINT8") {
+      ReshapeInputs(interpreter.get(), batch_xs, (uint8_t)1);
+  } else {
+      ReshapeInputs(interpreter.get(), batch_xs, (float)1.0);
+  }
   // Allocate Tensors
   interpreter->AllocateTensors();
 
   // Clear outputs[0]
-  ClearOutputs(interpreter.get(), type);
+  if (infer_type == "UINT8") {
+    ClearOutputs(interpreter.get(), (uint8_t)1);
+  } else {
+    ClearOutputs(interpreter.get(), (float)1.0);
+  }
 
   // Prepare inputs[0]
-  PrepareInputs(interpreter.get(), batch_xs, type);
-
+  if (input_type == "UINT8") {
+    PrepareInputs(interpreter.get(), batch_xs, (uint8_t)1);
+  } else {
+    PrepareInputs(interpreter.get(), batch_xs, (float)1.0);
+  }
   // Invoke = Run
   interpreter->Invoke();
-
+  // std::cout << "=== infer type: " << infer_type << ", input type: " << input_type << ", ys :" << batch_ys << std::endl;
   // Compare outputs
   TfLiteStatus result;
-  if (typestr == "UINT8") {
+  if (infer_type == "UINT8") {
     result = CompareOutputs_UINT8(interpreter.get(), batch_ys, ignore);
   } else {
     result = CompareOutputs_FLOAT(interpreter.get(), batch_ys, ignore);
@@ -227,6 +235,7 @@ int main(int argc, char* argv[]) {
   string batch_xs = "";
   string batch_ys = "";
   string inference_type = "";
+  string input_type = "";
   bool use_nnapi = true;
   bool ignore = false;
   std::vector<Flag> flag_list = {
@@ -234,7 +243,8 @@ int main(int argc, char* argv[]) {
 	Flag("batch_xs", &batch_xs, "batch_xs npy file to be set as inputs (Must)"),
 	Flag("batch_ys", &batch_ys, "batch_xy npy file to be compared with outputs (Must)"),
     Flag("use_nnapi", &use_nnapi, "use nn api i.e. 0,1"),
-    Flag("inference_type", &inference_type, "FLOAT or UINT8 comparison"),
+    Flag("inference_type", &inference_type, "use FLOAT or UINT8 comparison as inference type"),
+    Flag("input_type", &input_type, "use FLOAT or UINT8 comparison as input type"),
     Flag("ignore", &ignore, "ignore error to continue compare all, 0,1"),
   };
   string usage = tensorflow::Flags::Usage(argv[0], flag_list);
@@ -247,10 +257,6 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << usage;
     return -1;
   }
-  if (inference_type == "UINT8") {
-    Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str(), ignore, inference_type, (uint8_t)1);
-  } else {
-    Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str(), ignore, inference_type, (float)1.0);
-  }
+  Compare(tflite_file.c_str(), use_nnapi, batch_xs.c_str(), batch_ys.c_str(), ignore, inference_type, input_type);
   return 0;
 }
