@@ -267,6 +267,24 @@ class Concatenation
   }
 };
 
+class DepthToSpace
+    : public BuiltinOperator<DepthToSpaceOperator,
+                             ::tflite::DepthToSpaceOptions,
+                             ::tflite::BuiltinOptions_DepthToSpaceOptions> {
+ public:
+  using BuiltinOperator::BuiltinOperator;
+  flatbuffers::Offset<TfLiteOptions> WriteOptions(
+      const TocoOperator& op,
+      flatbuffers::FlatBufferBuilder* builder) const override {
+    return ::tflite::CreateDepthToSpaceOptions(*builder, op.block_size);
+  }
+
+  void ReadOptions(const TfLiteOptions& options,
+                   TocoOperator* op) const override {
+    op->block_size = options.block_size();
+  }
+};
+
 class FakeQuant : public CustomOperator<FakeQuantOperator> {
  public:
   using CustomOperator::CustomOperator;
@@ -828,6 +846,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       new Softmax(::tflite::BuiltinOperator_SOFTMAX, OperatorType::kSoftmax));
   ops.emplace_back(new SpaceToDepth(::tflite::BuiltinOperator_SPACE_TO_DEPTH,
                                     OperatorType::kSpaceToDepth));
+  ops.emplace_back(new DepthToSpace(::tflite::BuiltinOperator_DEPTH_TO_SPACE,
+                                    OperatorType::kDepthToSpace));
   ops.emplace_back(
       new Svdf(::tflite::BuiltinOperator_SVDF, OperatorType::kSvdf));
   ops.emplace_back(new Transpose(::tflite::BuiltinOperator_TRANSPOSE,
