@@ -27,13 +27,18 @@ namespace toco {
 namespace {
 
 bool ProcessLinearOperator(Model* model, Operator* op) {
-  if (op->inputs.size() >= 3) {
+  uint8_t input_num_with_bias = 3;
+  if (op->type == OperatorType::kTransposeConv) {
+    input_num_with_bias = 4;
+  }
+
+  if (op->inputs.size() >= input_num_with_bias) {
     return false;
   }
   const string& output_name = op->outputs[0];
   const string& bias_name = AvailableArrayName(*model, output_name + "_bias");
   op->inputs.push_back(bias_name);
-  DCHECK_EQ(op->inputs.size(), 3);
+  DCHECK_EQ(op->inputs.size(), input_num_with_bias);
   auto& bias_array = model->GetOrCreateArray(bias_name);
   bias_array.data_type = ArrayDataType::kFloat;
 

@@ -21,7 +21,7 @@ limitations under the License.
 #include "tensorflow/contrib/lite/kernels/internal/tensor.h"
 #include "tensorflow/contrib/lite/kernels/kernel_util.h"
 
-#include<iostream>
+#include <iostream>
 
 namespace tflite {
 namespace ops {
@@ -58,12 +58,12 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE(context, params != nullptr);
   OpData* data = reinterpret_cast<OpData*>(node->user_data);
 
-  bool hasBias = node->inputs->size == 3;
+  bool hasBias = node->inputs->size == 4;
   // Check number of inputs/outputs
-  TF_LITE_ENSURE(context, hasBias || node->inputs->size == 2);
+  TF_LITE_ENSURE(context, hasBias || node->inputs->size == 3);
   TF_LITE_ENSURE_EQ(context, node->outputs->size, 1);
   TfLiteTensor* output = &context->tensors[node->outputs->data[0]];
-  TfLiteTensor* input = &context->tensors[node->inputs->data[0]];
+  TfLiteTensor* input = &context->tensors[node->inputs->data[2]];
   TfLiteTensor* filter = &context->tensors[node->inputs->data[1]];
   // Check dimensionality of input, filter
   TF_LITE_ENSURE_EQ(context, input->dims->size, 4);
@@ -101,7 +101,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
 
   TfLiteTensor* bias = nullptr;
   if (hasBias) {
-    bias = &context->tensors[node->inputs->data[2]];
+    bias = &context->tensors[node->inputs->data[3]];
     if (data_type == kTfLiteUInt8) {
       TF_LITE_ENSURE_EQ(context, bias->type, kTfLiteInt32);
       TF_LITE_ENSURE_EQ(context, bias->params.zero_point, 0);
@@ -176,11 +176,11 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   OpData* data = reinterpret_cast<OpData*>(node->user_data);
 
   TfLiteTensor* output = &context->tensors[node->outputs->data[0]];
-  TfLiteTensor* input = &context->tensors[node->inputs->data[0]];
+  TfLiteTensor* input = &context->tensors[node->inputs->data[2]];
   TfLiteTensor* filter = &context->tensors[node->inputs->data[1]];
-  bool hasBias = node->inputs->size == 3;
+  bool hasBias = node->inputs->size == 4;
   TfLiteTensor* bias =
-    hasBias ? &context->tensors[node->inputs->data[2]] : nullptr;
+    hasBias ? &context->tensors[node->inputs->data[3]] : nullptr;
 
   switch (input->type) {  // Already know in/outtypes are same.
     case kTfLiteFloat32:

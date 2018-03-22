@@ -36,7 +36,12 @@ void FuseAddOrSubParamsIntoPrecedingAffine(Model* model, Operator* preceding_op,
   if (preceding_op->inputs.size() < 3) {
     LOG(FATAL) << "Missing bias parameter";
   }
-  auto& bias = model->GetArray(preceding_op->inputs[2]);
+
+  uint8_t bias_idx = 2;
+  if (preceding_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
+  auto& bias = model->GetArray(preceding_op->inputs[bias_idx]);
   bias.minmax = nullptr;
   const auto& operand =
       model->GetArray(add_or_sub_op->inputs[index_of_constant_input]);
@@ -88,8 +93,13 @@ void FuseMulOrDivParamsIntoPrecedingAffine(Model* model, Operator* preceding_op,
   if (preceding_op->inputs.size() < 3) {
     LOG(FATAL) << "Missing bias parameter";
   }
+
+  uint8_t bias_idx = 2;
+  if (preceding_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
   const auto& weights_name = preceding_op->inputs[1];
-  const auto& bias_name = preceding_op->inputs[2];
+  const auto& bias_name = preceding_op->inputs[bias_idx];
   auto& weights = model->GetArray(weights_name);
   DropMinMax(model, weights_name);
   auto& bias = model->GetArray(bias_name);
@@ -263,8 +273,12 @@ bool FuseBinaryIntoPrecedingAffine::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
+  uint8_t bias_idx = 2;
+  if (preceding_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
   const auto& weights = model->GetArray(preceding_op->inputs[1]);
-  const auto& bias = model->GetArray(preceding_op->inputs[2]);
+  const auto& bias = model->GetArray(preceding_op->inputs[bias_idx]);
   if (binary_op->type == OperatorType::kAdd ||
       binary_op->type == OperatorType::kSub) {
     if (!bias.buffer) {

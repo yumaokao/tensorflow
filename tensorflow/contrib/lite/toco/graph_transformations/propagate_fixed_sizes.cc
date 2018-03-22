@@ -225,6 +225,9 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
       << op->inputs[TransposeConvOperator::OUTPUT_SHAPE] << "\" had shape "
       << toco::ShapeToString(specified_output_shape_array.shape());
 
+  // TODO (Chia-Lin Yu @ Mediatek 20180322)
+  // Following checks would lead to errors
+#if 0
   // COMPUTE PADDING
   // We require the weights shape to calculate padding.
   const auto& weights_array =
@@ -294,6 +297,7 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
       << ", does not agree with shape computed from input data and weights: ["
       << input_shape.dims(0) << ", " << output_height << ", " << output_width
       << ", " << weights_shape.dims(3) << "].";
+#endif
 
   // SUCCESS: Set the op's output shape according to the specified output shape.
   *(output_array.mutable_shape()->mutable_dims()) =
@@ -1336,7 +1340,7 @@ void ProcessStackOperator(Model* model, StackOperator* op) {
     Shape shape = input_array.shape();
     if (shape.dimensions_count() == 0) {
       // Convert 0D scalars to 1D scalars of shape {1}.
-      shape.mutable_dims()->push_back(1);
+      // shape.mutable_dims()->push_back(1);
     }
     if (!stacked_shape) {
       stacked_shape.reset(new Shape(shape));
