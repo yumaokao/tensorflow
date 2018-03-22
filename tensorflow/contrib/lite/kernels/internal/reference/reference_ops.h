@@ -164,6 +164,9 @@ inline void Conv(const float* input_data, const Dims<4>& input_dims,
                  float* im2col_data, const Dims<4>& im2col_dims) {
   (void)im2col_data;  // only used in optimized code.
   (void)im2col_dims;  // only used in optimized code.
+  printf("input shape=(%d,%d,%d,%d)\n", input_dims.sizes[0], input_dims.sizes[1], input_dims.sizes[2], input_dims.sizes[3]);
+  printf("filter shape=(%d,%d,%d,%d)\n", filter_dims.sizes[0], filter_dims.sizes[1], filter_dims.sizes[2], filter_dims.sizes[3]);
+  printf("output shape=(%d,%d,%d,%d)\n", output_dims.sizes[0], output_dims.sizes[1], output_dims.sizes[2], output_dims.sizes[3]);
   const int batches = MatchingArraySize(input_dims, 3, output_dims, 3);
   const int input_depth = MatchingArraySize(input_dims, 0, filter_dims, 0);
   const int output_depth = MatchingArraySize(filter_dims, 3, output_dims, 0);
@@ -393,20 +396,26 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
   int32 input_height = input_dims.sizes[2];
   int32 input_width = input_dims.sizes[1];
   int32 input_depth = input_dims.sizes[0];
+  printf("input shape=(%d,%d,%d,%d)\n", input_depth, input_width, input_height, input_batches);
 
   int32 filter_batches = filter_dims.sizes[3];
   int32 filter_height = filter_dims.sizes[2];
   int32 filter_width = filter_dims.sizes[1];
+  printf("filter shape=(%d,%d,%d,%d)\n", filter_dims.sizes[0], filter_dims.sizes[1], filter_dims.sizes[2], filter_dims.sizes[3]);
 
   int32 output_height = output_dims.sizes[2];
   int32 output_width = output_dims.sizes[1];
+  printf("output shape=(%d,%d,%d,%d)\n", output_dims.sizes[0], output_dims.sizes[1], output_dims.sizes[2], output_dims.sizes[3]);
 
   int output_depth = filter_batches;
 
   int filter_left_offset =
-    std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
+    // std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
+    std::max(((input_width - 1) * stride_width + filter_width - output_width) / 2, 0);
   int filter_top_offset =
-    std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
+    // std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
+    std::max(((input_height - 1) * stride_height + filter_height - output_height) / 2, 0);
+  printf("filter_left_offset=%d, filter_top_offset=%d\n", filter_left_offset, filter_top_offset);
 
   for (int batch = 0; batch < input_batches; batch++) {
     // For each channel in the output (which is the input of the conv2d).
@@ -415,9 +424,7 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
       // be some issues (weird number) during accumulation.
       for (int x = 0; x < output_height; x++) {
         for (int y = 0; y < output_width; y++) {
-          const int output_index =
-                                  (batch * output_height * output_width * output_depth) +
-                                  (x * output_width * output_depth) + (y * output_depth) + (c);
+          const int output_index = Offset(output_dims, c, y, x, batch);
           if (bias_data) {
             // Assign bias directly.
             output_data[output_index] = bias_data[c];
@@ -435,30 +442,31 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
           // outputs the element at (h, w).
           int x = filter_height / 2 + h * stride_height- filter_top_offset;
           int y = filter_width / 2 + w * stride_width- filter_left_offset;
+          //printf("input(n,h,w)=(%d,%d,%d),  output_central(x,y,c) = (%d,%d,%d)\n", batch,h,w, x,y,c);
+          if ((h >= 0) && (h < input_height) && (w >= 0) && (w < input_width)){
+            for (int kx = 0; kx < filter_height; kx++) {
+              for (int ky = 0; ky < filter_width; ky++) {
+                int ox = x + kx - filter_height / 2;
+                int oy = y + ky - filter_width / 2;
+                //printf("k(h,w)=(%d,%d) o(h,w)=(%d,%d)\n",kx,ky, ox,oy);
+                if ((ox >= 0) && (ox < output_height) && (oy >= 0) && (oy < output_width)){
+                  const int output_index = Offset(output_dims, c, oy, ox, batch);
+                  // initialize
+                  auto total = output_data[output_index];
+                  for (int f = 0; f < input_depth; f++) {
+                    const auto input_source_value =
+                      input_data[Offset(input_dims, f, w, h, batch)];
 
-          for (int kx = 0; kx < filter_height; kx++) {
-            for (int ky = 0; ky < filter_width; ky++) {
-              int ox = x + kx - filter_height / 2;
-              int oy = y + ky - filter_width / 2;
-              const int output_index = (batch * output_height * output_width * output_depth) +
-                                       (ox * output_width * output_depth) + (oy * output_depth) +
-                                       (c);
-              // initialize
-              auto total = output_data[output_index];
-              for (int f = 0; f < input_depth; f++) {
-                const auto input_source_value =
-                  input_data[(batch * input_height * input_width * input_depth) +
-                             (h * input_width * input_depth) +
-                             (w * input_depth) + (f)];
-
-                const auto filter_source_value =
-                  filter_data[(c * filter_width * filter_height * input_depth) +
-                              (kx * filter_width * input_depth) +
-                              (ky * input_depth) + (f)];
-
-                total += input_source_value * filter_source_value;
+                    const auto filter_source_value =
+                      filter_data[Offset(filter_dims,f, ky, kx, c)];
+                    //printf("acc=%f by in=(%d,%d,%d,%d)=%f, f=(%d,%d,%d)=%f\n",input_source_value * filter_source_value,
+                    //        batch,h,w,f, input_source_value, c,kx,ky, filter_source_value);
+                    total += input_source_value * filter_source_value;
+                  }
+                  output_data[output_index] = total;
+                  //printf("output_data(%d)=%f\n", output_index, total);
+                }
               }
-              output_data[output_index] = total;
             }
           }
         }
@@ -505,9 +513,11 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
   int32 output_data_meta[input_batches*output_height*output_width*output_depth];
 
   int filter_left_offset =
-    std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
+    // std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
+    std::max(((input_width - 1) * stride_width + filter_width - output_width) / 2, 0);
   int filter_top_offset =
-    std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
+    // std::max(((input_height - 1) * stride_height + filter_height - output_height + 1) / 2, 0);
+    std::max(((input_height - 1) * stride_height + filter_height - output_height) / 2, 0);
 
   for (int batch = 0; batch < input_batches; batch++) {
     // For each channel in the output (which is the input of the conv2d).
@@ -516,8 +526,9 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
       // be some issues (weird number) during accumulation.
       for (int x = 0; x < output_height; x++) {
         for (int y = 0; y < output_width; y++) {
-          const int output_index = (batch * output_height * output_width * output_depth) +
-                                   (x * output_width * output_depth) + (y * output_depth) + (c);
+          const int output_index = Offset(output_dims, c, y, x, batch);
+                                   //(batch * output_height * output_width * output_depth) +
+                                   //(x * output_width * output_depth) + (y * output_depth) + (c);
           if (bias_data) {
             // Assign bias directly.
             output_data_meta[output_index] = bias_data[c];
@@ -535,36 +546,32 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
           // outputs the element at (h, w).
           int x = filter_height / 2 + h * stride_height- filter_top_offset;
           int y = filter_width / 2 + w * stride_width- filter_left_offset;
+          if ((h >= 0) && (h < input_height) && (w >= 0) && (w < input_width)){
+            for (int kx = 0; kx < filter_height; kx++) {
+              for (int ky = 0; ky < filter_width; ky++) {
+                int ox = x + kx - filter_height / 2;
+                int oy = y + ky - filter_width / 2;
+                if ((ox >= 0) && (ox < output_height) && (oy >= 0) && (oy < output_width)){
+                  const int output_index = Offset(output_dims, c, oy, ox, batch);
+                  // initialize
+                  int32 total = output_data_meta[output_index];
+                  for (int f = 0; f < input_depth; f++) {
+                    const auto input_source_value =
+                      input_data[Offset(input_dims, f, w, h ,batch)];
 
-          for (int kx = 0; kx < filter_height; kx++) {
-            for (int ky = 0; ky < filter_width; ky++) {
-              int ox = x + kx - filter_height / 2;
-              int oy = y + ky - filter_width / 2;
-              const int output_index =
-                  (batch * output_height * output_width * output_depth) +
-                  (ox * output_width * output_depth) + (oy * output_depth) +
-                  (c);
-              // initialize
-              int32 total = output_data_meta[output_index];
-              for (int f = 0; f < input_depth; f++) {
-                const auto input_source_value =
-                    input_data[(batch * input_height * input_width * input_depth) +
-                               (h * input_width * input_depth) +
-                               (w * input_depth) + (f)];
+                    const auto filter_source_value =
+                      filter_data[Offset(filter_dims, f, ky, kx, c)];
 
-                const auto filter_source_value =
-                    filter_data[(c * filter_width * filter_height * input_depth) +
-                                (kx * filter_width * input_depth) +
-                                (ky * input_depth) + (f)];
+                    const int32 input_value =
+                      static_cast<int32>(input_source_value) - input_offset;
+                    const int32 filter_value =
+                      static_cast<int32>(filter_source_value) - filter_offset;
 
-                const int32 input_value =
-                    static_cast<int32>(input_source_value) - input_offset;
-                const int32 filter_value =
-                    static_cast<int32>(filter_source_value) - filter_offset;
-
-                total += input_value * filter_value;
+                    total += input_value * filter_value;
+                  }
+                  output_data_meta[output_index] = total;
+                }
               }
-              output_data_meta[output_index] = total;
             }
           }
         }

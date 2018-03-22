@@ -20,6 +20,7 @@ limitations under the License.
 #include "tensorflow/contrib/lite/kernels/internal/reference/reference_ops.h"
 #include "tensorflow/contrib/lite/kernels/internal/tensor.h"
 #include "tensorflow/contrib/lite/kernels/kernel_util.h"
+#include "tensorflow/contrib/lite/kernels/padding.h"
 
 #include <iostream>
 
@@ -78,9 +79,6 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, output->type, data_type);
   TF_LITE_ENSURE_EQ(context, filter->type, data_type);
 
-  // Only VALID padding is supported in the current implementation.
-  TF_LITE_ENSURE(context, params->padding == TfLitePadding::kTfLitePaddingValid);
-
   // Current implementation only supports equal strides in the row and column dimensions
   auto stride_width = params->stride_width;
   auto stride_height = params->stride_height;
@@ -92,12 +90,8 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   auto output_height = output->dims->data[1];
   auto filter_width = filter->dims->data[2];
   auto filter_height = filter->dims->data[1];
-  const int expected_input_width =
-    ceil((float)(output_width - filter_width + 1) / stride_width);
-  const int expected_input_height =
-    ceil((float)(output_height - filter_height + 1) / stride_height);
-  TF_LITE_ENSURE_EQ(context, input->dims->data[2], expected_input_width);
-  TF_LITE_ENSURE_EQ(context, input->dims->data[1], expected_input_height);
+  int width = input->dims->data[2];
+  int height = input->dims->data[1];
 
   TfLiteTensor* bias = nullptr;
   if (hasBias) {
@@ -112,6 +106,22 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
     TF_LITE_ENSURE_EQ(context, bias->dims->data[0], filter->dims->data[0]);
   }
 
+  // Matching GetWindowedOutputSize in TensorFlow.
+  auto padding = params->padding;
+  auto computeOutSize = [padding](int imageSize, int filterSize,
+                                  int stride) -> int {
+    return padding == kTfLitePaddingSame
+               ? (imageSize + stride - 1) / stride
+               : padding == kTfLitePaddingValid
+                     ? (imageSize - filterSize + stride) / stride
+                     : 0;
+  };
+  int expected_width = computeOutSize(output_width, filter_width, params->stride_width);
+  int expected_height = computeOutSize(output_height, filter_height, params->stride_height);
+
+  TF_LITE_ENSURE_EQ(context, input->dims->data[2], expected_width);
+  TF_LITE_ENSURE_EQ(context, input->dims->data[1], expected_height);
+
   // Note that quantized inference requires that all tensors have their
   // parameters set. This is usually done during quantized training.
   if (data_type != kTfLiteFloat32) {
@@ -125,6 +135,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
                                   &data->output_activation_max);
   }
 
+  printf("TransposeConv Prepare Finish\n");
   return kTfLiteOk;
 }
 
