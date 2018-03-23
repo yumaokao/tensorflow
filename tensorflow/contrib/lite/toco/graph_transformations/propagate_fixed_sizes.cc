@@ -131,10 +131,19 @@ bool EnsureBiasVectorShape(Model* model, Operator* op) {
     return false;
   }
 
-  if (op->inputs.size() < 3) {
+  uint8_t input_num_with_bias = 3;
+  if (op->type == OperatorType::kTransposeConv) {
+    input_num_with_bias = 4;
+  }
+  if (op->inputs.size() < input_num_with_bias) {
     return false;
   }
-  auto& bias_array = model->GetArray(op->inputs[2]);
+
+  uint8_t bias_idx = 2;
+  if (op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
+  auto& bias_array = model->GetArray(op->inputs[bias_idx]);
   if (bias_array.has_shape()) {
     return true;
   }
@@ -197,6 +206,9 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
   // have to calculate the padding which requires the weights shape. So, we
   // might as well calculate the output shape and ensure it matches the
   // specified one
+  if (!EnsureBiasVectorShape(model, op)) {
+    return;
+  }
 
   // Check if we have already run.
   auto& output_array = model->GetArray(op->outputs[0]);
