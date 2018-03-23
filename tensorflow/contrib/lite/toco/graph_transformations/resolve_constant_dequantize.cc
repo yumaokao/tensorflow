@@ -65,9 +65,20 @@ bool ResolveConstantDequantize::Run(Model* model, std::size_t op_index) {
   input_minmax.min = input1_buffer.data[0];
   input_minmax.max = input2_buffer.data[0];
 
+  auto& input_qparams = input_array.GetOrCreateQuantizationParams();
+  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(input_minmax,
+                                                         &input_qparams);
+  // std::cout << "== get scale & zero_point: (" << input_qparams.scale << ", " << input_qparams.zero_point<< ")" << std::endl;
+  // std::cout << "== input array data_type = " << static_cast<std::underlying_type<ArrayDataType>::type>(input_array.data_type) << std::endl;
+  // std::cout << "== input final data_type = " << static_cast<std::underlying_type<ArrayDataType>::type>(input_array.final_data_type) << std::endl;
+
   auto& output_minmax = output_array.GetOrCreateMinMax();
   output_minmax.min = input1_buffer.data[0];
   output_minmax.max = input2_buffer.data[0];
+
+  auto& output_qparams = output_array.GetOrCreateQuantizationParams();
+  GetQuantizationParamsFromMinMax<ArrayDataType::kUint8>(output_minmax,
+                                                         &output_qparams);
 
   for (int i = 1; i <= 2; i++) {
     if (CountOpsWithInput(*model, dequantize_op->inputs[i]) == 1) {
