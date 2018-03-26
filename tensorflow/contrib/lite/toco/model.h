@@ -132,7 +132,7 @@ enum class OperatorType {
   // special nodes in the graph to shuffle axes.
   kReorderAxes,
   //Custom Ops
-  kPRelu,
+  // kPRelu,
   kLeakyRelu,
   kAbs,
 };
@@ -1056,9 +1056,9 @@ struct AbsOperator : Operator {
 //   inputs[0]: required: the left-hand side array
 //   inputs[1]: required: the right-hand side array
 //
-struct PReluOperator : Operator {
-  PReluOperator() : Operator(OperatorType::kPRelu) {}
-};
+// struct PReluOperator : Operator {
+//   PReluOperator() : Operator(OperatorType::kPRelu) {}
+// };
 
 // Element-wise LeakyRelu operator:
 //

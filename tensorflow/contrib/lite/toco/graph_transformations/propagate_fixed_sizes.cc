@@ -1597,7 +1597,6 @@ bool PropagateFixedSizes::Run(Model* model, std::size_t op_index) {
     case OperatorType::kFloor:
     case OperatorType::kExp:
     case OperatorType::kAbs:
-    case OperatorType::kPRelu:
     case OperatorType::kLeakyRelu:
       ProcessSimpleOperator(model, op);
       break;

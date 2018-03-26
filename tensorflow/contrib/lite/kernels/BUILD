@@ -178,7 +178,7 @@ cc_library(
         "unidirectional_sequence_rnn.cc",
         "quantize.cc",
         "transpose_conv.cc",
-        "prelu.cc",
+        # "prelu.cc",
         "leakyrelu.cc",
         "abs.cc",
     ],
