@@ -75,9 +75,9 @@ TfLiteRegistration* Register_TOPK_V2();
 TfLiteRegistration* Register_LOG_SOFTMAX();
 TfLiteRegistration* Register_CAST();
 TfLiteRegistration* Register_DEQUANTIZE();
+TfLiteRegistration* Register_PRELU();
 TfLiteRegistration* Register_QUANTIZE();
 TfLiteRegistration* Register_TRANSPOSE_CONV();
-TfLiteRegistration* Register_PRELU();
 TfLiteRegistration* Register_LEAKYRELU();
 TfLiteRegistration* Register_ABS();
 
@@ -136,9 +136,9 @@ BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_LOG_SOFTMAX, Register_LOG_SOFTMAX());
   AddBuiltin(BuiltinOperator_CAST, Register_CAST());
   AddBuiltin(BuiltinOperator_DEQUANTIZE, Register_DEQUANTIZE());
+  AddBuiltin(BuiltinOperator_PRELU, Register_PRELU());
   AddBuiltin(BuiltinOperator_QUANTIZE, Register_QUANTIZE());
   AddBuiltin(BuiltinOperator_TRANSPOSE_CONV, Register_TRANSPOSE_CONV());
-  AddBuiltin(BuiltinOperator_PRELU, Register_PRELU());
   AddBuiltin(BuiltinOperator_LEAKYRELU, Register_LEAKYRELU());
   AddBuiltin(BuiltinOperator_ABS, Register_ABS());
 
