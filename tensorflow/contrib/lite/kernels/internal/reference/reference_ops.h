@@ -510,7 +510,8 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
 
   int output_depth = filter_batches;
 
-  int32 output_data_meta[input_batches*output_height*output_width*output_depth];
+  //int32 output_data_meta[input_batches*output_height*output_width*output_depth];
+  int32* output_data_meta = new int32[input_batches*output_height*output_width*output_depth];
 
   int filter_left_offset =
     // std::max(((input_width - 1) * stride_width + filter_width - output_width + 1) / 2, 0);
@@ -587,6 +588,7 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
     acc = std::min(acc, output_activation_max);
     output_data[o_i] = acc;
   }
+  delete [] output_data_meta;
   return;
 }
 
