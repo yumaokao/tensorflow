@@ -132,6 +132,23 @@ void Dump(const char* filename) {
 
   }
 
+  const auto inputs = subgraph->inputs();
+  printf("number of input tensors: %d\n", inputs->size());
+  for (unsigned int i = 0; i < inputs->Length(); ++i) {
+    const auto index = inputs->Get(i);
+    const auto* tensor = tensors->Get(index);
+    printf("  %2d: index %d -> name %s\n",
+	   i, index, tensor->name()->c_str());
+  }
+
+  const auto outputs = subgraph->outputs();
+  printf("number of output tensors: %d\n", outputs->size());
+  for (unsigned int i = 0; i < outputs->Length(); ++i) {
+    const auto index = outputs->Get(i);
+    const auto* tensor = tensors->Get(index);
+    printf("  %2d: index %d -> name %s\n",
+	   i, index, tensor->name()->c_str());
+  }
 }
 
 int main(int argc, char* argv[]) {
