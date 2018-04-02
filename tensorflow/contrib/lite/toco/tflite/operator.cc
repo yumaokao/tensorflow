@@ -68,8 +68,7 @@ class Convolution
     auto activation_function =
         ActivationFunction::Serialize(op.fused_activation_function);
     return ::tflite::CreateConv2DOptions(*builder, padding, op.stride_width,
-                                         op.stride_height, op.dilation_width_factor,
-                                         op.dilation_height_factor, activation_function);
+                                         op.stride_height, activation_function);
   }
 
   void ReadOptions(const TfLiteOptions& options,
@@ -77,8 +76,6 @@ class Convolution
     op->padding.type = Padding::Deserialize(options.padding());
     op->stride_width = options.stride_w();
     op->stride_height = options.stride_h();
-    op->dilation_width_factor = options.dilation_width_factor();
-    op->dilation_height_factor = options.dilation_height_factor();
     op->fused_activation_function =
         ActivationFunction::Deserialize(options.fused_activation_function());
   }

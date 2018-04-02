@@ -77,13 +77,6 @@ bool IdentifyDilatedConv::Run(Model* model, std::size_t op_index) {
   int dilation_factor =
       block_shape_array.Array::GetBuffer<ArrayDataType::kInt32>().data[0];
 
-  const auto& padding_array = model->GetArray(stb_op->inputs[2]);
-  if (!padding_array.buffer) {
-    return false;
-  }
-  CHECK_EQ(padding_array.shape().dimensions_count(), 2);
-  int padding_factor =
-      padding_array.Array::GetBuffer<ArrayDataType::kInt32>().data[0];
 
   // Expand Op
   auto* post_stb_op = GetOpWithInput(*model, stb_op->outputs[0]);
@@ -156,6 +149,15 @@ bool IdentifyDilatedConv::Run(Model* model, std::size_t op_index) {
   CHECK_EQ(bts_op->inputs.size(), 3);
   CHECK_EQ(bts_op->outputs.size(), 1);
 
+  // Post-BatchToSpace Bias Op
+  Operator* bias_add_op = !has_bias_before_bts ? final_op : next_op;
+  if (bias_add_op->type != OperatorType::kAdd) {
+    // Bias op is required before or after BatchToSpace
+    return false;
+  }
+  CHECK_EQ(bias_add_op->inputs.size(), 2);
+  CHECK_EQ(bias_add_op->outputs.size(), 1);
+
   LOG(INFO) << "Identified sub-network emulating dilated convolution.";
 
   // 2. RE-WIRE OPERATORS
@@ -163,36 +165,19 @@ bool IdentifyDilatedConv::Run(Model* model, std::size_t op_index) {
   // Re-use the existing Conv2D op.
   conv_op->dilation_width_factor = dilation_factor;
   conv_op->dilation_height_factor = dilation_factor;
-  conv_op->padding.type = (padding_factor == 0) ? PaddingType::kValid : PaddingType::kSame;
+  conv_op->padding.type = PaddingType::kSame;
 
   // Rewire the ops to bypass SpaceToBatch, BatchToSpace, and Pad.
+  bias_add_op->outputs[0] = final_op->outputs[0];
+  if (has_expand_op) {
+    bias_add_op->inputs[0] = post_conv_op->outputs[0];
+    post_conv_op->inputs[0] = conv_op->outputs[0];
+    conv_op->inputs[0] = post_stb_op->outputs[0];
+    post_stb_op->inputs[0] = stb_op->inputs[0];
 
-  if (has_bias_before_bts) {
-    // Post-BatchToSpace Bias Op
-    Operator* bias_add_op = next_op;
-    CHECK_EQ(bias_add_op->inputs.size(), 2);
-    CHECK_EQ(bias_add_op->outputs.size(), 1);
-
-    bias_add_op->outputs[0] = final_op->outputs[0];
-    if (has_expand_op) {
-      bias_add_op->inputs[0] = post_conv_op->outputs[0];
-      post_conv_op->inputs[0] = conv_op->outputs[0];
-      conv_op->inputs[0] = post_stb_op->outputs[0];
-      post_stb_op->inputs[0] = stb_op->inputs[0];
-    } else {
-      bias_add_op->inputs[0] = conv_op->outputs[0];
-      conv_op->inputs[0] = stb_op->inputs[0];
-    }
   } else {
-    if (has_expand_op) {
-      post_conv_op->outputs[0] = next_op->outputs[0];
-      post_conv_op->inputs[0] = conv_op->outputs[0];
-      conv_op->inputs[0] = post_stb_op->outputs[0];
-      post_stb_op->inputs[0] = stb_op->inputs[0];
-    } else {
-      conv_op->outputs[0] = next_op->outputs[0];
-      conv_op->inputs[0] = stb_op->inputs[0];
-    }
+    bias_add_op->inputs[0] = conv_op->outputs[0];
+    conv_op->inputs[0] = stb_op->inputs[0];
   }
 
   // TODO(mjmatthews): Connect bias directly into the Conv2D?

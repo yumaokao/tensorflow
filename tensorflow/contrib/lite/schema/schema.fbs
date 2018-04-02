@@ -199,8 +199,6 @@ table Conv2DOptions {
   padding:Padding;
   stride_w:int;
   stride_h:int;
-  dilation_width_factor:int;
-  dilation_height_factor:int;
   fused_activation_function:ActivationFunctionType;
 }
 
