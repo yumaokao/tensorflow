@@ -131,6 +131,7 @@ enum BuiltinOperator : byte {
   BIDIRECTIONAL_SEQUENCE_LSTM = 52,
   CAST = 53,
   PRELU = 54,
+  MAXIMUM = 55,
   QUANTIZE = 60,
   TRANSPOSE_CONV = 61,
   // PRELU = 62,
@@ -180,6 +181,7 @@ union BuiltinOptions {
   DepthToSpaceOptions,
   CastOptions,
   DequantizeOptions,
+  MaximumOptions,
   TransposeConvOptions,
   DilatedConvOptions,
 }
@@ -414,6 +416,9 @@ table CastOptions {
 }
 
 table DequantizeOptions {
+}
+
+table MaximumOptions {
 }
 
 // An OperatorCode can be an enum value (BuiltinOperator) if the operator is a

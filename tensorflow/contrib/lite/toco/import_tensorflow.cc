@@ -1398,13 +1398,16 @@ void ConvertFloorOperator(const NodeDef& node,
 void ConvertGatherOperator(const NodeDef& node,
                            const TensorFlowImportFlags& tf_import_flags,
                            Model* model) {
-  CHECK_EQ(node.op(), "Gather");
-  CheckInputsCount(node, tf_import_flags, 2);
+  CHECK(node.op() == "Gather" || node.op() == "GatherV2");
+  if (node.op() == "Gather") CheckInputsCount(node, tf_import_flags, 2);
+  if (node.op() == "GatherV2") CheckInputsCount(node, tf_import_flags, 3);
   const auto indices_data_type = GetDataTypeAttr(node, "Tindices");
   CHECK(indices_data_type == DT_INT32 || indices_data_type == DT_INT64);
   auto* op = new GatherOperator;
   op->inputs.push_back(node.input(0));
   op->inputs.push_back(node.input(1));
+  // TODO(ahentz): we currently ignore the third tensor in GatherV2 but we
+  // should read it an pass it on to the TF Lite Interpreter.
   op->outputs.push_back(node.name());
   model->operators.emplace_back(op);
 }
@@ -1596,7 +1599,9 @@ void ConvertMeanOperator(const NodeDef& node,
   op->inputs.push_back(node.input(1));
   op->outputs.push_back(node.name());
   model->operators.emplace_back(op);
-  if (HasAttr(node, "keep_dims")) {
+  if (HasAttr(node, "keepdims")) {
+    op->keep_dims = GetBoolAttr(node, "keepdims");
+  } else if (HasAttr(node, "keep_dims")) {
     op->keep_dims = GetBoolAttr(node, "keep_dims");
   }
 }
@@ -2236,7 +2241,7 @@ std::unique_ptr<Model> ImportTensorFlowGraphDef(
       ConvertCastOperator(node, tf_import_flags, model);
     } else if (node.op() == "Floor") {
       ConvertFloorOperator(node, tf_import_flags, model);
-    } else if (node.op() == "Gather") {
+    } else if (node.op() == "Gather" || node.op() == "GatherV2") {
       ConvertGatherOperator(node, tf_import_flags, model);
     } else if (node.op() == "ResizeBilinear") {
       ConvertResizeBilinearOperator(node, tf_import_flags, model);

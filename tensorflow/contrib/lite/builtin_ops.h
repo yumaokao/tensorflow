@@ -80,6 +80,7 @@ typedef enum {
   kTfLiteBuiltinBidirectionalSequenceLstm = 52,
   kTfLiteBuiltinCast = 53,
   kTfLiteBuiltinPrelu = 54,
+  kTfLiteBuiltinMaximum = 55,
   kTfLiteBuiltinQuantize = 60,
   kTfLiteBuiltinTransposeConv = 61,
   // kTfLiteBuiltinPrelu = 62,
