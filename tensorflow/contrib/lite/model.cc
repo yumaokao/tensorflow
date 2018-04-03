@@ -292,8 +292,6 @@ void* ParseOpData(const Operator* op, BuiltinOperator op_type,
         params->padding = parse_padding(conv_params->padding());
         params->stride_width = conv_params->stride_w();
         params->stride_height = conv_params->stride_h();
-        params->dilation_width_factor = conv_params->dilation_width_factor();
-        params->dilation_height_factor = conv_params->dilation_height_factor();
         params->activation =
             parse_activation(conv_params->fused_activation_function());
       }

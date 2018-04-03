@@ -223,9 +223,6 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   int filter_height = filter->dims->data[1];
   int batches = input->dims->data[0];
 
-  int dilated_width = params->dilation_width_factor * (filter_width - 1) + 1;
-  int dilated_height = params->dilation_height_factor * (filter_height - 1) + 1;
-
   // Matching GetWindowedOutputSize in TensorFlow.
   auto padding = params->padding;
   auto computeOutSize = [padding](int imageSize, int filterSize,
@@ -237,13 +234,13 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
                      : 0;
   };
 
-  int outWidth = computeOutSize(width, dilated_width, params->stride_width);
-  int outHeight = computeOutSize(height, dilated_height, params->stride_height);
+  int outWidth = computeOutSize(width, filter_width, params->stride_width);
+  int outHeight = computeOutSize(height, filter_height, params->stride_height);
 
   data->padding.height =
-      ComputePadding(params->stride_height, height, dilated_height, outHeight);
+      ComputePadding(params->stride_height, height, filter_height, outHeight);
   data->padding.width =
-      ComputePadding(params->stride_width, width, dilated_width, outWidth);
+      ComputePadding(params->stride_width, width, filter_width, outWidth);
 
   TF_LITE_ENSURE(context, hasBias);
 
@@ -339,22 +336,6 @@ void EvalQuantized(TfLiteContext* context, TfLiteNode* node,
   auto filter_offset = -filter->params.zero_point;
   auto output_offset = output->params.zero_point;
 
-  // if dilated conv
-  if (params->dilation_width_factor > 1 || params->dilation_height_factor > 1) {
-    reference_ops::Conv(
-        GetTensorData<uint8_t>(input), GetTensorDims(input), input_offset,
-        GetTensorData<uint8_t>(filter), GetTensorDims(filter), filter_offset,
-        GetTensorData<int32_t>(bias), GetTensorDims(bias),
-        params->stride_width, params->stride_height,
-        params->dilation_width_factor, params->dilation_height_factor,
-        data->padding.width, data->padding.height,
-        output_offset, data->output_multiplier,
-        data->output_shift, data->output_activation_min,
-        data->output_activation_max, GetTensorData<uint8_t>(output),
-        GetTensorDims(output), GetTensorData<uint8_t>(im2col),
-        GetTensorDims(im2col), gemm_context);
-    return;
-  }
 
   switch (kernel_type) {
     case kReference:
@@ -362,7 +343,7 @@ void EvalQuantized(TfLiteContext* context, TfLiteNode* node,
           GetTensorData<uint8_t>(input), GetTensorDims(input), input_offset,
           GetTensorData<uint8_t>(filter), GetTensorDims(filter), filter_offset,
           GetTensorData<int32_t>(bias), GetTensorDims(bias),
-          params->stride_width, params->stride_height, 1, 1, data->padding.width,
+          params->stride_width, params->stride_height, data->padding.width,
           data->padding.height, output_offset, data->output_multiplier,
           data->output_shift, data->output_activation_min,
           data->output_activation_max, GetTensorData<uint8_t>(output),
@@ -395,20 +376,6 @@ void EvalFloat(TfLiteContext* context, TfLiteNode* node,
   float output_activation_min, output_activation_max;
   CalculateActivationRangeFloat(params->activation, &output_activation_min,
                                 &output_activation_max);
-
-  // if dilated conv
-  if (params->dilation_width_factor > 1 || params->dilation_height_factor > 1) {
-    reference_ops::Conv(GetTensorData<float>(input), GetTensorDims(input),
-                        GetTensorData<float>(filter), GetTensorDims(filter),
-                        GetTensorData<float>(bias), GetTensorDims(bias),
-                        params->stride_width, params->stride_height,
-                        params->dilation_width_factor, params->dilation_height_factor,
-                        data->padding.width, data->padding.height,
-                        output_activation_min, output_activation_max,
-                        GetTensorData<float>(output), GetTensorDims(output),
-                        GetTensorData<float>(im2col), GetTensorDims(im2col));
-    return;
-  }
 
   switch (kernel_type) {
     case kReference: {
