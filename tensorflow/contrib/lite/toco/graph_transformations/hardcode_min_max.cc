@@ -164,23 +164,6 @@ bool HardcodeMinMaxForAverageOrMaxPool(Model* model, Operator* op) {
   return true;
 }
 
-bool HardcodeMinMaxForMean(Model* model, Operator* op) {
-  auto& output_array = model->GetArray(op->outputs[0]);
-  if (output_array.minmax) {
-    return false;
-  }
-  const auto& input_array = model->GetArray(op->inputs[0]);
-  if (!input_array.minmax) {
-    return false;
-  }
-  const auto& input_minmax = input_array.GetMinMax();
-  CHECK(!output_array.minmax);
-  auto& output_minmax = output_array.GetOrCreateMinMax();
-  output_minmax.min = std::min(input_minmax.min, 0.);
-  output_minmax.max = std::max(input_minmax.max, 0.);
-  return true;
-}
-
 bool HardcodeMinMaxForResizeBilinear(Model* model, Operator* op) {
   // return HardcodeMinMaxForAverageOrMaxPool(model, op);
   auto& output_array = model->GetArray(op->outputs[0]);
@@ -359,10 +342,6 @@ bool HardcodeMinMax::Run(Model* model, std::size_t op_index) {
     case OperatorType::kAveragePool:
     case OperatorType::kMaxPool:
       changed = HardcodeMinMaxForAverageOrMaxPool(model, op);
-      break;
-
-    case OperatorType::kMean:
-      changed = HardcodeMinMaxForMean(model, op);
       break;
 
     case OperatorType::kResizeBilinear:
