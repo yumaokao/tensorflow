@@ -113,10 +113,10 @@ int GetOutputDepthFromWeights(const Model& model, const Operator& op) {
   const string& weights_name = op.inputs[1];
   const auto& weights_shape = model.GetArray(weights_name).shape();
   if (op.type == OperatorType::kConv ||
-      op.type == OperatorType::kFullyConnected ||
-      op.type == OperatorType::kTransposeConv) {
+      op.type == OperatorType::kFullyConnected) {
     return weights_shape.dims(0);
-  } else if (op.type == OperatorType::kDepthwiseConv) {
+  } else if (op.type == OperatorType::kDepthwiseConv ||
+      op.type == OperatorType::kTransposeConv) {
     return weights_shape.dims(3);
   } else {
     LOG(FATAL) << "Unhandled operator type";

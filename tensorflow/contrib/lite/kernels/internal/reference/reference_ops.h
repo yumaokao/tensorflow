@@ -398,7 +398,7 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
   int32 input_depth = input_dims.sizes[0];
   printf("input shape=(%d,%d,%d,%d)\n", input_depth, input_width, input_height, input_batches);
 
-  int32 filter_batches = filter_dims.sizes[3];
+  int32 filter_batches = filter_dims.sizes[0];
   int32 filter_height = filter_dims.sizes[2];
   int32 filter_width = filter_dims.sizes[1];
   printf("filter shape=(%d,%d,%d,%d)\n", filter_dims.sizes[0], filter_dims.sizes[1], filter_dims.sizes[2], filter_dims.sizes[3]);
@@ -458,7 +458,7 @@ inline void TransposeConv(const float* input_data, const Dims<4>& input_dims,
                       input_data[Offset(input_dims, f, w, h, batch)];
 
                     const auto filter_source_value =
-                      filter_data[Offset(filter_dims,f, ky, kx, c)];
+                      filter_data[Offset(filter_dims, c, ky, kx, f)];
                     //printf("acc=%f by in=(%d,%d,%d,%d)=%f, f=(%d,%d,%d)=%f\n",input_source_value * filter_source_value,
                     //        batch,h,w,f, input_source_value, c,kx,ky, filter_source_value);
                     total += input_source_value * filter_source_value;
@@ -501,7 +501,7 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
   int32 input_width = input_dims.sizes[1];
   int32 input_depth = input_dims.sizes[0];
 
-  int32 filter_batches = filter_dims.sizes[3];
+  int32 filter_batches = filter_dims.sizes[0];
   int32 filter_height = filter_dims.sizes[2];
   int32 filter_width = filter_dims.sizes[1];
 
@@ -561,7 +561,7 @@ inline void TransposeConv(const uint8* input_data, const Dims<4>& input_dims,
                       input_data[Offset(input_dims, f, w, h ,batch)];
 
                     const auto filter_source_value =
-                      filter_data[Offset(filter_dims, f, ky, kx, c)];
+                      filter_data[Offset(filter_dims, c, ky, kx, f)];
 
                     const int32 input_value =
                       static_cast<int32>(input_source_value) - input_offset;

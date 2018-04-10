@@ -70,7 +70,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_EQ(context, input->dims->size, 4);
   TF_LITE_ENSURE_EQ(context, filter->dims->size, 4);
   // Check input channels matching filter
-  TF_LITE_ENSURE_EQ(context, input->dims->data[3], filter->dims->data[3]);
+  TF_LITE_ENSURE_EQ(context, input->dims->data[3], filter->dims->data[0]);
 
   // Check types. (We assume that UINT8 refers to quantized tensors)
   TfLiteType data_type = input->type;
@@ -103,7 +103,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
       TF_LITE_ENSURE_EQ(context, bias->type, data_type);
     }
     TF_LITE_ENSURE_EQ(context, bias->dims->size, 1);
-    TF_LITE_ENSURE_EQ(context, bias->dims->data[0], filter->dims->data[0]);
+    TF_LITE_ENSURE_EQ(context, bias->dims->data[0], filter->dims->data[3]);
   }
 
   // Matching GetWindowedOutputSize in TensorFlow.

@@ -1638,15 +1638,6 @@ void GetShuffleShape(AxesOrder input_axes_order, AxesOrder output_axes_order,
     (*shuffle)[1] = 0;
     (*shuffle)[2] = 1;
     (*shuffle)[3] = 2;
-  } else if (input_axes_order == AxesOrder::kHWOI &&
-             output_axes_order == AxesOrder::kOHWI) {
-    // Reorder For TransposeConv's Weight
-    // 3210 <- 3210
-    // OHWI <- HWOI
-    (*shuffle)[0] = 2;
-    (*shuffle)[1] = 0;
-    (*shuffle)[2] = 1;
-    (*shuffle)[3] = 3;
   } else {
     LOG(FATAL) << "Bad shuffle";
   }
@@ -1791,8 +1782,6 @@ int AxesCount(AxesOrder axes_order) {
     case AxesOrder::k1HWO:
       return 4;
     case AxesOrder::kNHWC:
-      return 4;
-    case AxesOrder::kHWOI:
       return 4;
     default:
       LOG(FATAL) << "Bad AxesOrder";

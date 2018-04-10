@@ -1720,9 +1720,9 @@ void ConvertTransposeConvOperator(const NodeDef& node,
     auto* reorder = new ReorderAxesOperator;
     reorder->inputs = {weights_name};
     reorder->outputs = {reordered_weights_name};
-    // TODO: input shape should be kHWIO, ref: https://www.tensorflow.org/api_docs/cc/class/tensorflow/ops/conv2-d-backprop-input
-    // Need to update our tflite CPU implementation as well
-    reorder->input_axes_order = AxesOrder::kHWOI;
+    // input shape should be kHWIO instead of kHWOI
+    // ref: https://www.tensorflow.org/api_docs/cc/class/tensorflow/ops/conv2-d-backprop-input
+    reorder->input_axes_order = AxesOrder::kHWIO;
     reorder->output_axes_order = AxesOrder::kOHWI;
     model->operators.emplace_back(reorder);
   }
