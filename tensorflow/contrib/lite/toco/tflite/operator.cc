@@ -879,9 +879,6 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList() {
       new TransposeConvolution(::tflite::BuiltinOperator_TRANSPOSE_CONV, OperatorType::kTransposeConv));
 
   // Custom Operators.
-  ops.emplace_back(new Cast("CAST", OperatorType::kCast));
-  ops.emplace_back(
-      new DepthToSpace("DEPTH_TO_SPACE", OperatorType::kDepthToSpace));
   ops.emplace_back(new FakeQuant("FAKE_QUANT", OperatorType::kFakeQuant));
   ops.emplace_back(new TensorFlowUnsupported(
       "TENSORFLOW_UNSUPPORTED", OperatorType::kTensorFlowUnsupported));
