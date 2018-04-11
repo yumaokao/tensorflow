@@ -43,6 +43,20 @@ bool ResolveReshapeAttributes::Run(Model* model, std::size_t op_index) {
 
   if (op->shape.empty()) return false;
 
+  // We make the batch dim dynamic if all the other dims are fixed.
+  bool make_dynamic = true;
+  for (auto s : op->shape) {
+    if (s == -1) {
+      make_dynamic = false;
+      break;
+    }
+  }
+  if (make_dynamic) {
+    op->shape[0] = -1;
+    auto& shape_array = model->GetArray(reshape_op->inputs[1]);
+    shape_array.GetMutableBuffer<ArrayDataType::kInt32>().data[0] = -1;
+  }
+
   return true;
 }
 

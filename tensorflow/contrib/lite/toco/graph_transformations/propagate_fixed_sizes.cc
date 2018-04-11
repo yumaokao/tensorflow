@@ -113,10 +113,10 @@ int GetOutputDepthFromWeights(const Model& model, const Operator& op) {
   const string& weights_name = op.inputs[1];
   const auto& weights_shape = model.GetArray(weights_name).shape();
   if (op.type == OperatorType::kConv ||
-      op.type == OperatorType::kFullyConnected ||
-      op.type == OperatorType::kTransposeConv) {
+      op.type == OperatorType::kFullyConnected) {
     return weights_shape.dims(0);
-  } else if (op.type == OperatorType::kDepthwiseConv) {
+  } else if (op.type == OperatorType::kDepthwiseConv ||
+      op.type == OperatorType::kTransposeConv) {
     return weights_shape.dims(3);
   } else {
     LOG(FATAL) << "Unhandled operator type";
@@ -131,10 +131,19 @@ bool EnsureBiasVectorShape(Model* model, Operator* op) {
     return false;
   }
 
-  if (op->inputs.size() < 3) {
+  uint8_t input_num_with_bias = 3;
+  if (op->type == OperatorType::kTransposeConv) {
+    input_num_with_bias = 4;
+  }
+  if (op->inputs.size() < input_num_with_bias) {
     return false;
   }
-  auto& bias_array = model->GetArray(op->inputs[2]);
+
+  uint8_t bias_idx = 2;
+  if (op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
+  auto& bias_array = model->GetArray(op->inputs[bias_idx]);
   if (bias_array.has_shape()) {
     return true;
   }
@@ -197,6 +206,9 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
   // have to calculate the padding which requires the weights shape. So, we
   // might as well calculate the output shape and ensure it matches the
   // specified one
+  if (!EnsureBiasVectorShape(model, op)) {
+    return;
+  }
 
   // Check if we have already run.
   auto& output_array = model->GetArray(op->outputs[0]);
@@ -225,6 +237,9 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
       << op->inputs[TransposeConvOperator::OUTPUT_SHAPE] << "\" had shape "
       << toco::ShapeToString(specified_output_shape_array.shape());
 
+  // TODO (Chia-Lin Yu @ Mediatek 20180322)
+  // Following checks would lead to errors
+#if 0
   // COMPUTE PADDING
   // We require the weights shape to calculate padding.
   const auto& weights_array =
@@ -294,6 +309,7 @@ void ProcessTransposeConvOperator(Model* model, TransposeConvOperator* op) {
       << ", does not agree with shape computed from input data and weights: ["
       << input_shape.dims(0) << ", " << output_height << ", " << output_width
       << ", " << weights_shape.dims(3) << "].";
+#endif
 
   // SUCCESS: Set the op's output shape according to the specified output shape.
   *(output_array.mutable_shape()->mutable_dims()) =
@@ -1336,7 +1352,7 @@ void ProcessStackOperator(Model* model, StackOperator* op) {
     Shape shape = input_array.shape();
     if (shape.dimensions_count() == 0) {
       // Convert 0D scalars to 1D scalars of shape {1}.
-      shape.mutable_dims()->push_back(1);
+      // shape.mutable_dims()->push_back(1);
     }
     if (!stacked_shape) {
       stacked_shape.reset(new Shape(shape));

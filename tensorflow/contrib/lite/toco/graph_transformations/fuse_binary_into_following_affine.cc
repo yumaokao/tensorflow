@@ -42,8 +42,13 @@ void FuseAddOrSubParamsIntoFollowingAffine(Model* model, Operator* following_op,
   if (following_op->inputs.size() < 3) {
     LOG(FATAL) << "Missing bias parameter";
   }
+
+  uint8_t bias_idx = 2;
+  if (following_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
   const auto& weights = model->GetArray(following_op->inputs[1]);
-  auto& bias = model->GetArray(following_op->inputs[2]);
+  auto& bias = model->GetArray(following_op->inputs[bias_idx]);
   bias.minmax = nullptr;
   const auto& operand =
       model->GetArray(add_or_sub_op->inputs[index_of_constant_input]);
@@ -120,8 +125,13 @@ void FuseMulOrDivParamsIntoFollowingAffine(Model* model, Operator* following_op,
   // This should have been checked before this point.
   CHECK(mul_or_div_op->type != OperatorType::kDiv ||
         index_of_constant_input == 1);
+
+  uint8_t bias_idx = 2;
+  if (following_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
   const auto& weights_name = following_op->inputs[1];
-  const auto& bias_name = following_op->inputs[2];
+  const auto& bias_name = following_op->inputs[bias_idx];
   auto& weights = model->GetArray(weights_name);
   DropMinMax(model, weights_name);
   DropMinMax(model, bias_name);
@@ -242,8 +252,12 @@ bool FuseBinaryIntoFollowingAffine::Run(Model* model, std::size_t op_index) {
     return false;
   }
 
+  uint8_t bias_idx = 2;
+  if (following_op->type == OperatorType::kTransposeConv) {
+    bias_idx = 3;
+  }
   const auto& weights = model->GetArray(following_op->inputs[1]);
-  const auto& bias = model->GetArray(following_op->inputs[2]);
+  const auto& bias = model->GetArray(following_op->inputs[bias_idx]);
   if (!weights.buffer || !bias.buffer) {
     AddMessageF(
         "Not fusing %s because the following %s has non-constant weights or "
