@@ -149,7 +149,9 @@ namespace cnpy {
             global_header.resize(global_header_size);
             size_t res = fread(&global_header[0],sizeof(char),global_header_size,fp);
             if(res != global_header_size){
-                throw std::runtime_error("npz_save: header read error while adding to existing zip");
+                // throw std::runtime_error("npz_save: header read error while adding to existing zip");
+                std::cout<<"libnpy error: npz_save header read error while adding to existing zip "<<"\n";
+                assert(res == global_header_size);
             }
             fseek(fp,global_header_offset,SEEK_SET);
         }
