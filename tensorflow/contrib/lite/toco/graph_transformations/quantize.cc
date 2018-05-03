@@ -440,6 +440,25 @@ bool ChooseQuantizationForOperatorOutput(
         output, OperatorTypeName(op.type));
     return true;
   }
+  if (op.type == OperatorType::kTensorFlowReshape) {
+    // Should uses output's minmax for such cases and back propogate to
+    //   input' minmax.
+    // Starts with Reshape, consider to other hardcode minmax cases like
+    //   Split, MaxPool, ...
+    //     Conv -> Reshape -> Concat
+    //     Conv -> Reshape ->
+    int data_input_index = 0;
+    const auto& input_array = model->GetArray(op.inputs[data_input_index]);
+    MinMax& input_minmax = input_array.GetMinMax();
+    auto& input_quantization_params = input_array.GetQuantizationParams();
+
+    const MinMax& minmax = GetOrComputeMinMax(model, output);
+    *quantized_data_type = GetQuantizedDataType(array, ArrayDataType::kUint8);
+    GetQuantizationParams(*quantized_data_type, minmax, quantization_params);
+    input_quantization_params = *quantization_params;
+    input_minmax = minmax;
+    return true;
+  }
   if ((op.type == OperatorType::kDepthToSpace) ||
       (op.type == OperatorType::kSpaceToDepth) ||
       (op.type == OperatorType::kTensorFlowReshape) ||
